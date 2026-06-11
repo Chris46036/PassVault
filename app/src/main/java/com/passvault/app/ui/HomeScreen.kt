@@ -18,11 +18,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Badge
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,13 +39,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.passvault.app.R
 import com.passvault.app.data.Categories
+import com.passvault.app.data.EntryType
 import com.passvault.app.data.VaultEntry
 import com.passvault.app.data.VaultRepository
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
@@ -54,8 +58,8 @@ fun HomeScreen(
     var categoryFilter by remember { mutableStateOf<String?>(null) }
     var onlyFavorites by remember { mutableStateOf(false) }
 
-    val entries = VaultRepository.entries
-    val filtered = entries.filter { e ->
+    val all = VaultRepository.entries.filter { !it.isDeleted }
+    val filtered = all.filter { e ->
         (query.isBlank() ||
             e.title.contains(query, true) ||
             e.username.contains(query, true) ||
@@ -69,7 +73,7 @@ fun HomeScreen(
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Buscar en la bóveda…") },
+                placeholder = { Text(stringResource(R.string.search_hint)) },
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -82,7 +86,7 @@ fun HomeScreen(
                     FilterChip(
                         selected = onlyFavorites,
                         onClick = { onlyFavorites = !onlyFavorites },
-                        label = { Text("Favoritos") },
+                        label = { Text(stringResource(R.string.favorites)) },
                         leadingIcon = { Icon(Icons.Filled.Star, null, Modifier.size(16.dp)) },
                     )
                 }
@@ -90,7 +94,7 @@ fun HomeScreen(
                     FilterChip(
                         selected = categoryFilter == cat,
                         onClick = { categoryFilter = if (categoryFilter == cat) null else cat },
-                        label = { Text(cat) },
+                        label = { Text(categoryLabel(cat)) },
                     )
                 }
             }
@@ -101,8 +105,7 @@ fun HomeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
-                        if (entries.isEmpty()) "Tu bóveda está vacía.\nPulsa + para guardar tu primera contraseña."
-                        else "Sin resultados",
+                        stringResource(if (all.isEmpty()) R.string.empty_vault else R.string.no_results),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyLarge,
                     )
@@ -123,7 +126,7 @@ fun HomeScreen(
             onClick = onCreate,
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         ) {
-            Icon(Icons.Filled.Add, contentDescription = "Añadir")
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.add))
         }
     }
 }
@@ -145,23 +148,45 @@ private fun EntryCard(entry: VaultEntry, onClick: () -> Unit) {
                 modifier = Modifier.size(42.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        entry.title.take(1).uppercase().ifBlank { "?" },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    )
+                    when (entry.type) {
+                        EntryType.CARD -> Icon(
+                            Icons.Filled.CreditCard, null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        EntryType.NOTE -> Icon(
+                            Icons.Filled.Description, null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        EntryType.IDENTITY -> Icon(
+                            Icons.Filled.Badge, null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
+                        else -> Text(
+                            entry.title.take(1).uppercase().ifBlank { "?" },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    entry.title.ifBlank { "Sin nombre" },
+                    entry.title.ifBlank { stringResource(R.string.untitled) },
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    entry.username.ifBlank { entry.url },
+                    when (entry.type) {
+                        EntryType.CARD -> maskCardNumber(entry.extras["number"] ?: "")
+                        EntryType.IDENTITY -> entry.extras["fullName"] ?: ""
+                        EntryType.NOTE -> typeLabel(entry.type)
+                        else -> entry.username.ifBlank { entry.url }
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -170,11 +195,16 @@ private fun EntryCard(entry: VaultEntry, onClick: () -> Unit) {
             }
             if (entry.favorite) {
                 Icon(
-                    Icons.Filled.Star, contentDescription = "Favorito",
+                    Icons.Filled.Star, contentDescription = stringResource(R.string.favorite),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(18.dp),
                 )
             }
         }
     }
+}
+
+fun maskCardNumber(number: String): String {
+    val digits = number.filter { it.isDigit() }
+    return if (digits.length >= 4) "•••• ${digits.takeLast(4)}" else number
 }

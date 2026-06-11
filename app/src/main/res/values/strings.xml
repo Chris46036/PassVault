@@ -1,4 +1,237 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">PassVault</string>
+
+    <!-- Generales -->
+    <string name="cancel">Cancelar</string>
+    <string name="save">Guardar</string>
+    <string name="delete">Eliminar</string>
+    <string name="close">Cerrar</string>
+    <string name="back">Volver</string>
+    <string name="copy">Copiar</string>
+    <string name="copied">Copiado</string>
+    <string name="show_hide">Mostrar u ocultar</string>
+    <string name="open">Abrir</string>
+    <string name="edit">Editar</string>
+    <string name="add">Añadir</string>
+    <string name="never">Nunca</string>
+    <string name="untitled">Sin nombre</string>
+    <string name="master_password">Contraseña maestra</string>
+    <string name="wrong_password">Contraseña incorrecta</string>
+    <string name="unlock_title">Desbloquear PassVault</string>
+
+    <!-- Primer uso -->
+    <string name="setup_welcome">Bienvenido a PassVault</string>
+    <string name="setup_explain">Crea tu contraseña maestra. Es la única llave de tu bóveda: no se guarda en ningún sitio y no se puede recuperar si la olvidas.</string>
+    <string name="setup_repeat">Repite la contraseña</string>
+    <string name="setup_min_chars">Usa al menos 8 caracteres</string>
+    <string name="setup_too_weak">Esa contraseña es demasiado débil</string>
+    <string name="setup_no_match">Las contraseñas no coinciden</string>
+    <string name="setup_create">Crear bóveda</string>
+
+    <!-- Desbloqueo -->
+    <string name="unlock_locked">Tu bóveda está bloqueada</string>
+    <string name="unlock_button">Desbloquear</string>
+    <string name="unlock_use_fingerprint">Usar huella</string>
+    <string name="unlock_bio_invalid">La clave biométrica ya no es válida. Usa tu contraseña.</string>
+
+    <!-- Biometría -->
+    <string name="bio_enable_title">Activar desbloqueo biométrico</string>
+    <string name="bio_subtitle">Confirma tu identidad</string>
+    <string name="bio_not_configured">Biometría no configurada</string>
+    <string name="bio_changed">La biometría del dispositivo cambió. Usa tu contraseña maestra y vuelve a activarla.</string>
+    <string name="bio_unavailable">Biometría no disponible</string>
+    <string name="bio_cipher_error">Error de cifrado</string>
+    <string name="bio_decrypt_failed">No se pudo descifrar la clave</string>
+
+    <!-- Bóveda -->
+    <string name="search_hint">Buscar en la bóveda…</string>
+    <string name="favorites">Favoritos</string>
+    <string name="favorite">Favorito</string>
+    <string name="empty_vault">Tu bóveda está vacía.\nPulsa + para guardar tu primer elemento.</string>
+    <string name="no_results">Sin resultados</string>
+
+    <!-- Categorías -->
+    <string name="cat_accounts">Cuentas</string>
+    <string name="cat_social">Redes sociales</string>
+    <string name="cat_bank">Bancos y finanzas</string>
+    <string name="cat_email">Correo</string>
+    <string name="cat_work">Trabajo</string>
+    <string name="cat_wifi">Wi-Fi</string>
+    <string name="cat_other">Otros</string>
+
+    <!-- Tipos de elemento -->
+    <string name="type_login">Cuenta</string>
+    <string name="type_card">Tarjeta</string>
+    <string name="type_note">Nota segura</string>
+    <string name="type_identity">Identidad</string>
+
+    <!-- Pestañas -->
+    <string name="tab_vault">Bóveda</string>
+    <string name="tab_generator">Generador</string>
+    <string name="tab_audit">Auditoría</string>
+    <string name="tab_settings">Ajustes</string>
+
+    <!-- Detalle -->
+    <string name="field_username">Usuario</string>
+    <string name="field_password">Contraseña</string>
+    <string name="field_website">Sitio web</string>
+    <string name="field_notes">Notas</string>
+    <string name="field_totp">Código 2FA (TOTP)</string>
+    <string name="totp_invalid">Secreto inválido</string>
+    <string name="copy_code">Copiar código</string>
+    <string name="detail_category">Categoría: %1$s</string>
+    <string name="detail_pwd_age">Contraseña actualizada hace %1$d días</string>
+    <string name="delete_confirm_title">¿Eliminar elemento?</string>
+    <string name="delete_confirm_body">\"%1$s\" se moverá a la papelera y podrás recuperarlo durante 30 días.</string>
+    <string name="history_title">Historial de contraseñas (%1$d)</string>
+    <string name="seconds_short">%1$d s</string>
+
+    <!-- Tarjetas -->
+    <string name="card_number">Número de tarjeta</string>
+    <string name="card_holder">Titular</string>
+    <string name="card_expiry">Vencimiento (MM/AA)</string>
+    <string name="card_cvv">CVV</string>
+
+    <!-- Identidad -->
+    <string name="id_fullname">Nombre completo</string>
+    <string name="id_phone">Teléfono</string>
+    <string name="id_address">Dirección</string>
+    <string name="id_document">Documento (DNI, CURP, pasaporte…)</string>
+
+    <!-- Edición -->
+    <string name="entry_new">Nuevo elemento</string>
+    <string name="entry_edit">Editar elemento</string>
+    <string name="entry_name_label">Nombre *</string>
+    <string name="entry_name_required">El nombre es obligatorio</string>
+    <string name="entry_user_label">Usuario o correo</string>
+    <string name="entry_url_label">Sitio web (para autorrellenar)</string>
+    <string name="entry_category">Categoría</string>
+    <string name="entry_totp_label">Secreto 2FA / TOTP (opcional)</string>
+    <string name="entry_totp_invalid">No parece un secreto base32 válido</string>
+    <string name="entry_totp_help">El código que te da el sitio al activar la verificación en dos pasos</string>
+    <string name="generate">Generar</string>
+    <string name="scan_qr">Escanear QR</string>
+    <string name="scan_qr_prompt">Apunta al código QR de la verificación en dos pasos</string>
+    <string name="qr_no_secret">El QR no contiene un secreto de verificación</string>
+
+    <!-- Generador -->
+    <string name="gen_use">Usar</string>
+    <string name="gen_use_this">Usar esta contraseña</string>
+    <string name="gen_dialog_title">Generar contraseña</string>
+    <string name="gen_mode_chars">Caracteres</string>
+    <string name="gen_mode_passphrase">Frase de paso</string>
+    <string name="gen_length">Longitud: %1$d</string>
+    <string name="gen_words">Palabras: %1$d</string>
+    <string name="gen_upper">Mayúsculas (A-Z)</string>
+    <string name="gen_lower">Minúsculas (a-z)</string>
+    <string name="gen_digits">Números (0-9)</string>
+    <string name="gen_symbols">Símbolos (!@#…)</string>
+    <string name="gen_ambiguous">Evitar ambiguos (l, 1, O, 0)</string>
+    <string name="gen_select_type">Selecciona al menos un tipo de carácter</string>
+    <string name="regenerate">Regenerar</string>
+
+    <!-- Fortaleza -->
+    <string name="strength_empty">Vacía</string>
+    <string name="strength_common">Muy débil (común)</string>
+    <string name="strength_very_weak">Muy débil</string>
+    <string name="strength_weak">Débil</string>
+    <string name="strength_fair">Aceptable</string>
+    <string name="strength_strong">Fuerte</string>
+    <string name="strength_very_strong">Muy fuerte</string>
+    <string name="strength_bits">%1$s · %2$d bits</string>
+
+    <!-- Auditoría -->
+    <string name="audit_title">Auditoría de seguridad</string>
+    <string name="audit_score_label">Puntuación de seguridad</string>
+    <string name="audit_analyzed">%1$d contraseñas analizadas</string>
+    <string name="audit_check_hibp">Comprobar filtraciones (Have I Been Pwned)</string>
+    <string name="audit_checking">Comprobando filtraciones…</string>
+    <string name="audit_offline">Sin conexión: no se pudo comprobar</string>
+    <string name="audit_breached_none">Ninguna contraseña aparece en filtraciones conocidas 🎉</string>
+    <string name="audit_breached">Filtradas en brechas de datos (%1$d): cámbialas ya</string>
+    <string name="audit_breach_count">Vista en %1$d filtraciones</string>
+    <string name="audit_weak">Contraseñas débiles (%1$d)</string>
+    <string name="audit_reused">Contraseñas reutilizadas (%1$d)</string>
+    <string name="audit_reused_detail">Usada en %1$d elementos</string>
+    <string name="audit_old">Sin cambiar hace más de un año (%1$d)</string>
+    <string name="audit_old_detail">Hace %1$d días</string>
+    <string name="audit_all_good">Todo en orden. Tus contraseñas son fuertes y únicas. 💪</string>
+    <string name="audit_empty">Añade contraseñas a tu bóveda para analizarlas.</string>
+    <string name="audit_view">Ver</string>
+
+    <!-- Ajustes -->
+    <string name="settings_title">Ajustes</string>
+    <string name="sec_section">Seguridad</string>
+    <string name="set_bio">Desbloqueo con huella</string>
+    <string name="set_bio_sub">Usa tu biometría para abrir la bóveda</string>
+    <string name="set_bio_unavailable">Tu dispositivo no tiene biometría configurada</string>
+    <string name="set_bio_enabled">Desbloqueo biométrico activado</string>
+    <string name="set_autolock">Bloqueo automático</string>
+    <string name="set_clipboard">Limpiar portapapeles</string>
+    <string name="set_change_master">Cambiar contraseña maestra</string>
+    <string name="set_change_master_sub">Re-cifra toda la bóveda</string>
+    <string name="set_lock_now">Bloquear ahora</string>
+    <string name="set_lock_now_sub">Cierra la bóveda inmediatamente</string>
+    <string name="autofill_section">Autorrellenar</string>
+    <string name="set_autofill_active">PassVault es tu servicio de autofill ✓</string>
+    <string name="set_autofill">Activar autorrellenado</string>
+    <string name="set_autofill_sub">Rellena usuario y contraseña en otras apps y navegadores</string>
+    <string name="autofill_settings_error">No se pudo abrir la configuración de autofill</string>
+    <string name="backup_section">Copia de seguridad</string>
+    <string name="set_export">Exportar bóveda cifrada</string>
+    <string name="set_export_sub">Archivo .pvlt protegido con tu contraseña maestra</string>
+    <string name="export_done">Copia de seguridad exportada (cifrada)</string>
+    <string name="export_error">No se pudo exportar: %1$s</string>
+    <string name="set_import">Importar copia de seguridad</string>
+    <string name="set_import_sub">Añade los elementos de un archivo .pvlt</string>
+    <string name="set_import_csv">Importar CSV (Chrome, Bitwarden, LastPass…)</string>
+    <string name="set_import_csv_sub">Trae tus contraseñas desde otro gestor o navegador</string>
+    <string name="import_wrong_password">Contraseña incorrecta para esa copia</string>
+    <string name="import_done">Importados %1$d elementos nuevos</string>
+    <string name="import_invalid">Archivo de copia no válido</string>
+    <string name="import_csv_invalid">El archivo no parece un CSV de contraseñas</string>
+    <string name="import_read_error">No se pudo leer el archivo</string>
+    <string name="import_dialog_title">Importar copia de seguridad</string>
+    <string name="import_dialog_body">Introduce la contraseña maestra con la que se creó esa copia.</string>
+    <string name="import_dialog_label">Contraseña de la copia</string>
+    <string name="import_button">Importar</string>
+    <string name="set_trash">Papelera (%1$d)</string>
+    <string name="set_trash_sub">Elementos eliminados, recuperables durante 30 días</string>
+    <string name="trash_title">Papelera</string>
+    <string name="trash_empty">La papelera está vacía</string>
+    <string name="trash_restore">Restaurar</string>
+    <string name="trash_delete_forever">Eliminar definitivamente</string>
+    <string name="trash_empty_all">Vaciar papelera</string>
+    <string name="trash_deleted_ago">Eliminado hace %1$d días</string>
+    <string name="support_section">Apoya el proyecto</string>
+    <string name="kofi_title">☕ Invítame un café en Ko-fi</string>
+    <string name="kofi_sub">Si PassVault te resulta útil, ¡apóyame!</string>
+    <string name="browser_error">No se pudo abrir el navegador</string>
+    <string name="about_section">Acerca de</string>
+    <string name="about_title">PassVault %1$s</string>
+    <string name="about_body">Cifrado AES-256-GCM con Argon2id. Todo se guarda solo en tu dispositivo: nadie más, ni siquiera esta app, puede recuperar tu contraseña maestra.</string>
+    <string name="autolock_immediately">Al salir de la app</string>
+    <string name="autolock_1m">Tras 1 minuto</string>
+    <string name="autolock_5m">Tras 5 minutos</string>
+    <string name="autolock_15m">Tras 15 minutos</string>
+    <string name="clip_15">A los 15 segundos</string>
+    <string name="clip_30">A los 30 segundos</string>
+    <string name="clip_60">Al minuto</string>
+    <string name="change_pwd_current">Contraseña actual</string>
+    <string name="change_pwd_new">Nueva contraseña</string>
+    <string name="change_pwd_repeat">Repite la nueva</string>
+    <string name="change_pwd_button">Cambiar</string>
+    <string name="change_pwd_wrong">La contraseña actual no es correcta</string>
+    <string name="change_pwd_done">Contraseña actualizada. Vuelve a activar la biometría si la usabas.</string>
+
+    <!-- Autofill -->
+    <string name="autofill_unlock_to_fill">🔒 Desbloquear PassVault</string>
+    <string name="autofill_unlock_and_fill">Desbloquear y rellenar</string>
+    <string name="autofill_no_data">Sin datos</string>
+    <string name="autofill_nothing_to_save">Sin contraseña que guardar</string>
+    <string name="save_prompt_title">¿Guardar en PassVault?</string>
+    <string name="save_prompt_body">Se guardará la cuenta de %1$s (%2$s). Desbloquea tu bóveda para confirmar.</string>
+    <string name="save_prompt_unlock_and_save">Desbloquear y guardar</string>
+    <string name="save_prompt_saved">Credencial guardada en PassVault</string>
 </resources>

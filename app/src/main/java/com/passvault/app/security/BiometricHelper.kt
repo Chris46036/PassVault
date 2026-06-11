@@ -10,6 +10,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import com.passvault.app.R
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -82,7 +83,7 @@ object BiometricHelper {
             onDone(false)
             return
         }
-        prompt(activity, "Activar desbloqueo biométrico", cipher, onResult = { c ->
+        prompt(activity, activity.getString(R.string.bio_enable_title), cipher, onResult = { c ->
             try {
                 val ct = c.doFinal(masterKeyBytes)
                 activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -106,7 +107,7 @@ object BiometricHelper {
         val ct = prefs.getString(PREF_CT, null)
         val iv = prefs.getString(PREF_IV, null)
         if (ct == null || iv == null) {
-            onFail("Biometría no configurada")
+            onFail(activity.getString(R.string.bio_not_configured))
             return
         }
         val cipher: Cipher
@@ -119,17 +120,17 @@ object BiometricHelper {
             )
         } catch (e: KeyPermanentlyInvalidatedException) {
             disable(activity)
-            onFail("Las huellas del dispositivo cambiaron. Usa tu contraseña maestra y vuelve a activar la biometría.")
+            onFail(activity.getString(R.string.bio_changed))
             return
         } catch (e: Exception) {
-            onFail("Biometría no disponible")
+            onFail(activity.getString(R.string.bio_unavailable))
             return
         }
-        prompt(activity, "Desbloquear PassVault", cipher, onResult = { c ->
+        prompt(activity, activity.getString(R.string.unlock_title), cipher, onResult = { c ->
             try {
                 onSuccess(c.doFinal(Base64.decode(ct, Base64.NO_WRAP)))
             } catch (e: Exception) {
-                onFail("No se pudo descifrar la clave")
+                onFail(activity.getString(R.string.bio_decrypt_failed))
             }
         }, onFail = { onFail(it) })
     }
@@ -145,7 +146,7 @@ object BiometricHelper {
         val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 val c = result.cryptoObject?.cipher
-                if (c != null) onResult(c) else onFail("Error de cifrado")
+                if (c != null) onResult(c) else onFail(activity.getString(R.string.bio_cipher_error))
             }
 
             override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -154,8 +155,8 @@ object BiometricHelper {
         })
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
-            .setSubtitle("Confirma tu identidad")
-            .setNegativeButtonText("Cancelar")
+            .setSubtitle(activity.getString(R.string.bio_subtitle))
+            .setNegativeButtonText(activity.getString(R.string.cancel))
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build()
         prompt.authenticate(info, BiometricPrompt.CryptoObject(cipher))

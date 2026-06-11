@@ -19,10 +19,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.fragment.app.FragmentActivity
+import com.passvault.app.R
 import com.passvault.app.data.VaultEntry
 
-private data class Tab(val title: String, val icon: @Composable () -> Unit)
+private data class Tab(val titleRes: Int, val icon: ImageVector)
 
 @Composable
 fun MainScreen(activity: FragmentActivity) {
@@ -30,15 +33,16 @@ fun MainScreen(activity: FragmentActivity) {
     var viewingEntry by remember { mutableStateOf<VaultEntry?>(null) }
     var editingEntry by remember { mutableStateOf<VaultEntry?>(null) }
     var creating by remember { mutableStateOf(false) }
+    var showingTrash by remember { mutableStateOf(false) }
 
     val tabs = listOf(
-        Tab("Bóveda") { Icon(Icons.Filled.Lock, null) },
-        Tab("Generador") { Icon(Icons.Filled.Casino, null) },
-        Tab("Auditoría") { Icon(Icons.Filled.VerifiedUser, null) },
-        Tab("Ajustes") { Icon(Icons.Filled.Settings, null) },
+        Tab(R.string.tab_vault, Icons.Filled.Lock),
+        Tab(R.string.tab_generator, Icons.Filled.Casino),
+        Tab(R.string.tab_audit, Icons.Filled.VerifiedUser),
+        Tab(R.string.tab_settings, Icons.Filled.Settings),
     )
 
-    // Pantallas superpuestas: edición y detalle
+    // Pantallas superpuestas: edición, detalle y papelera
     when {
         creating || editingEntry != null -> {
             BackHandler { creating = false; editingEntry = null }
@@ -62,6 +66,11 @@ fun MainScreen(activity: FragmentActivity) {
             )
             return
         }
+        showingTrash -> {
+            BackHandler { showingTrash = false }
+            TrashScreen(onBack = { showingTrash = false })
+            return
+        }
     }
 
     Scaffold(
@@ -71,8 +80,8 @@ fun MainScreen(activity: FragmentActivity) {
                     NavigationBarItem(
                         selected = selectedTab == i,
                         onClick = { selectedTab = i },
-                        icon = tab.icon,
-                        label = { Text(tab.title) },
+                        icon = { Icon(tab.icon, contentDescription = null) },
+                        label = { Text(stringResource(tab.titleRes)) },
                     )
                 }
             }
@@ -87,7 +96,7 @@ fun MainScreen(activity: FragmentActivity) {
             )
             1 -> GeneratorScreen(modifier)
             2 -> AuditScreen(modifier, onOpenEntry = { viewingEntry = it })
-            3 -> SettingsScreen(modifier, activity)
+            3 -> SettingsScreen(modifier, activity, onOpenTrash = { showingTrash = true })
         }
     }
 }

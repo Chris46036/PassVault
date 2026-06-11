@@ -3,6 +3,7 @@ package com.passvault.app.ui
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings as AndroidSettings
 import android.view.autofill.AutofillManager
 import android.widget.Toast
@@ -33,17 +34,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
+import com.passvault.app.R
 import com.passvault.app.data.Settings
 import com.passvault.app.data.VaultRepository
 import com.passvault.app.security.BiometricHelper
+import com.passvault.app.util.CsvImporter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
-fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
+fun SettingsScreen(
+    modifier: Modifier = Modifier,
+    activity: FragmentActivity,
+    onOpenTrash: () -> Unit,
+) {
     val context = LocalContext.current
     var bioEnabled by remember { mutableStateOf(BiometricHelper.isEnabled(context)) }
     var autoLock by remember { mutableIntStateOf(Settings.autoLockSeconds(context)) }
@@ -51,9 +59,19 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
     var showAutoLockDialog by remember { mutableStateOf(false) }
     var showClipDialog by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
-    var importPassword by remember { mutableStateOf<Uri?>(null) }
+    var importPasswordUri by remember { mutableStateOf<Uri?>(null) }
 
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+
+    val exportDoneMsg = stringResource(R.string.export_done)
+    val importReadErrorMsg = stringResource(R.string.import_read_error)
+    val importCsvInvalidMsg = stringResource(R.string.import_csv_invalid)
+    val bioEnabledMsg = stringResource(R.string.set_bio_enabled)
+    val autofillErrorMsg = stringResource(R.string.autofill_settings_error)
+    val browserErrorMsg = stringResource(R.string.browser_error)
+    val changePwdDoneMsg = stringResource(R.string.change_pwd_done)
+    val importWrongPwdMsg = stringResource(R.string.import_wrong_password)
+    val importInvalidMsg = stringResource(R.string.import_invalid)
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -64,9 +82,9 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                 context.contentResolver.openOutputStream(uri)?.use {
                     it.write(VaultRepository.exportBytes(context))
                 }
-                toast("Copia de seguridad exportada (cifrada con tu contraseña maestra)")
+                toast(exportDoneMsg)
             } catch (e: Exception) {
-                toast("No se pudo exportar: ${e.message}")
+                toast(context.getString(R.string.export_error, e.message ?: ""))
             }
         }
     }
@@ -76,14 +94,43 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
     ) { result ->
         val uri = result.data?.data
         if (result.resultCode == Activity.RESULT_OK && uri != null) {
-            importPassword = uri
+            importPasswordUri = uri
+        }
+    }
+
+    val importCsvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            try {
+                val text = context.contentResolver.openInputStream(uri)
+                    ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                if (text == null) {
+                    toast(importReadErrorMsg)
+                } else {
+                    val parsed = CsvImporter.parse(text)
+                    if (parsed == null) {
+                        toast(importCsvInvalidMsg)
+                    } else {
+                        val added = VaultRepository.addAllNew(context, parsed)
+                        toast(context.getString(R.string.import_done, added))
+                    }
+                }
+            } catch (e: Exception) {
+                toast(importCsvInvalidMsg)
+            }
         }
     }
 
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
-        Text("Ajustes", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(bottom = 12.dp))
+        Text(
+            stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
 
-        SectionTitle("Seguridad")
+        SectionTitle(stringResource(R.string.sec_section))
         Card(Modifier.fillMaxWidth()) {
             Column {
                 Row(
@@ -91,10 +138,12 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("Desbloqueo con huella")
+                        Text(stringResource(R.string.set_bio))
                         Text(
-                            if (BiometricHelper.canUseBiometric(context)) "Usa tu biometría para abrir la bóveda"
-                            else "Tu dispositivo no tiene biometría configurada",
+                            stringResource(
+                                if (BiometricHelper.canUseBiometric(context)) R.string.set_bio_sub
+                                else R.string.set_bio_unavailable
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -108,7 +157,7 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                                 if (keyBytes != null) {
                                     BiometricHelper.promptEnable(activity, keyBytes) { ok ->
                                         bioEnabled = ok
-                                        if (ok) toast("Desbloqueo biométrico activado")
+                                        if (ok) toast(bioEnabledMsg)
                                     }
                                 }
                             } else {
@@ -120,48 +169,55 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                 }
                 HorizontalDivider()
                 SettingRow(
-                    "Bloqueo automático",
+                    stringResource(R.string.set_autolock),
                     autoLockLabel(autoLock),
                 ) { showAutoLockDialog = true }
                 HorizontalDivider()
                 SettingRow(
-                    "Limpiar portapapeles",
+                    stringResource(R.string.set_clipboard),
                     clipLabel(clipClear),
                 ) { showClipDialog = true }
                 HorizontalDivider()
-                SettingRow("Cambiar contraseña maestra", "Re-cifra toda la bóveda") {
-                    showChangePassword = true
-                }
+                SettingRow(
+                    stringResource(R.string.set_change_master),
+                    stringResource(R.string.set_change_master_sub),
+                ) { showChangePassword = true }
                 HorizontalDivider()
-                SettingRow("Bloquear ahora", "Cierra la bóveda inmediatamente") {
-                    VaultRepository.lock()
-                }
+                SettingRow(
+                    stringResource(R.string.set_lock_now),
+                    stringResource(R.string.set_lock_now_sub),
+                ) { VaultRepository.lock() }
             }
         }
 
-        SectionTitle("Autorrellenar")
-        Card(Modifier.fillMaxWidth()) {
-            val afm = remember { context.getSystemService(AutofillManager::class.java) }
-            val isService = afm?.hasEnabledAutofillServices() == true
-            SettingRow(
-                if (isService) "PassVault es tu servicio de autofill ✓" else "Activar autorrellenado",
-                "Rellena usuario y contraseña en otras apps y navegadores",
-            ) {
-                try {
-                    val intent = Intent(AndroidSettings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
-                        data = Uri.parse("package:${context.packageName}")
+        if (Build.VERSION.SDK_INT >= 26) {
+            SectionTitle(stringResource(R.string.autofill_section))
+            Card(Modifier.fillMaxWidth()) {
+                val afm = remember { context.getSystemService(AutofillManager::class.java) }
+                val isService = afm?.hasEnabledAutofillServices() == true
+                SettingRow(
+                    stringResource(if (isService) R.string.set_autofill_active else R.string.set_autofill),
+                    stringResource(R.string.set_autofill_sub),
+                ) {
+                    try {
+                        val intent = Intent(AndroidSettings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                            data = Uri.parse("package:${context.packageName}")
+                        }
+                        activity.startActivity(intent)
+                    } catch (e: Exception) {
+                        toast(autofillErrorMsg)
                     }
-                    activity.startActivity(intent)
-                } catch (e: Exception) {
-                    toast("No se pudo abrir la configuración de autofill")
                 }
             }
         }
 
-        SectionTitle("Copia de seguridad")
+        SectionTitle(stringResource(R.string.backup_section))
         Card(Modifier.fillMaxWidth()) {
             Column {
-                SettingRow("Exportar bóveda cifrada", "Archivo .pvlt protegido con tu contraseña maestra") {
+                SettingRow(
+                    stringResource(R.string.set_export),
+                    stringResource(R.string.set_export_sub),
+                ) {
                     val date = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
                     val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
@@ -171,37 +227,64 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                     exportLauncher.launch(intent)
                 }
                 HorizontalDivider()
-                SettingRow("Importar copia de seguridad", "Añade las entradas de un archivo .pvlt") {
+                SettingRow(
+                    stringResource(R.string.set_import),
+                    stringResource(R.string.set_import_sub),
+                ) {
                     val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                         addCategory(Intent.CATEGORY_OPENABLE)
                         type = "*/*"
                     }
                     importLauncher.launch(intent)
                 }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_import_csv),
+                    stringResource(R.string.set_import_csv_sub),
+                ) {
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "*/*"
+                    }
+                    importCsvLauncher.launch(intent)
+                }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_trash, VaultRepository.trashedEntries().size),
+                    stringResource(R.string.set_trash_sub),
+                ) { onOpenTrash() }
             }
         }
 
-        SectionTitle("Apoya el proyecto")
+        SectionTitle(stringResource(R.string.support_section))
         Card(Modifier.fillMaxWidth()) {
-            SettingRow("☕ Invítame un café en Ko-fi", "Si PassVault te resulta útil, ¡apóyame!") {
+            SettingRow(
+                stringResource(R.string.kofi_title),
+                stringResource(R.string.kofi_sub),
+            ) {
                 try {
                     context.startActivity(
                         Intent(Intent.ACTION_VIEW, Uri.parse("https://ko-fi.com/chris46036"))
                     )
                 } catch (e: Exception) {
-                    toast("No se pudo abrir el navegador")
+                    toast(browserErrorMsg)
                 }
             }
         }
 
-        SectionTitle("Acerca de")
+        SectionTitle(stringResource(R.string.about_section))
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp)) {
-                Text("PassVault 1.0", style = MaterialTheme.typography.titleSmall)
+                val versionName = remember {
+                    try {
+                        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
+                    } catch (e: Exception) {
+                        ""
+                    }
+                }
+                Text(stringResource(R.string.about_title, versionName), style = MaterialTheme.typography.titleSmall)
                 Text(
-                    "Cifrado AES-256-GCM · PBKDF2 (250.000 iteraciones) · " +
-                        "Todo se guarda solo en tu dispositivo. Nadie más, ni siquiera esta app, " +
-                        "puede recuperar tu contraseña maestra.",
+                    stringResource(R.string.about_body),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -211,8 +294,14 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
 
     if (showAutoLockDialog) {
         OptionsDialog(
-            title = "Bloqueo automático",
-            options = listOf(0 to "Al salir de la app", 60 to "Tras 1 minuto", 300 to "Tras 5 minutos", 900 to "Tras 15 minutos", -1 to "Nunca"),
+            title = stringResource(R.string.set_autolock),
+            options = listOf(
+                0 to stringResource(R.string.autolock_immediately),
+                60 to stringResource(R.string.autolock_1m),
+                300 to stringResource(R.string.autolock_5m),
+                900 to stringResource(R.string.autolock_15m),
+                -1 to stringResource(R.string.never),
+            ),
             selected = autoLock,
             onSelect = {
                 autoLock = it
@@ -224,8 +313,13 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
     }
     if (showClipDialog) {
         OptionsDialog(
-            title = "Limpiar portapapeles",
-            options = listOf(15 to "A los 15 segundos", 30 to "A los 30 segundos", 60 to "Al minuto", 0 to "Nunca"),
+            title = stringResource(R.string.set_clipboard),
+            options = listOf(
+                15 to stringResource(R.string.clip_15),
+                30 to stringResource(R.string.clip_30),
+                60 to stringResource(R.string.clip_60),
+                0 to stringResource(R.string.never),
+            ),
             selected = clipClear,
             onSelect = {
                 clipClear = it
@@ -242,47 +336,51 @@ fun SettingsScreen(modifier: Modifier = Modifier, activity: FragmentActivity) {
                 showChangePassword = false
                 BiometricHelper.disable(context)
                 bioEnabled = false
-                toast("Contraseña maestra actualizada. Vuelve a activar la biometría si la usabas.")
+                toast(changePwdDoneMsg)
             },
         )
     }
-    importPassword?.let { uri ->
+    importPasswordUri?.let { uri ->
         ImportDialog(
-            onDismiss = { importPassword = null },
+            onDismiss = { importPasswordUri = null },
             onImport = { password ->
                 try {
                     val data = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                     if (data == null) {
-                        toast("No se pudo leer el archivo")
+                        toast(importReadErrorMsg)
                     } else {
                         val added = VaultRepository.importBackup(context, data, password.toCharArray())
-                        if (added < 0) toast("Contraseña incorrecta para esa copia")
-                        else toast("Importadas $added entradas nuevas")
+                        if (added < 0) toast(importWrongPwdMsg)
+                        else toast(context.getString(R.string.import_done, added))
                     }
                 } catch (e: Exception) {
-                    toast("Archivo de copia no válido")
+                    toast(importInvalidMsg)
                 }
-                importPassword = null
+                importPasswordUri = null
             },
         )
     }
 }
 
-private fun autoLockLabel(seconds: Int) = when (seconds) {
-    0 -> "Al salir de la app"
-    -1 -> "Nunca"
-    60 -> "Tras 1 minuto"
-    else -> "Tras ${seconds / 60} minutos"
-}
-
-private fun clipLabel(seconds: Int) = when (seconds) {
-    0 -> "Nunca"
-    60 -> "Al minuto"
-    else -> "A los $seconds segundos"
+@Composable
+private fun autoLockLabel(seconds: Int): String = when (seconds) {
+    0 -> stringResource(R.string.autolock_immediately)
+    -1 -> stringResource(R.string.never)
+    60 -> stringResource(R.string.autolock_1m)
+    300 -> stringResource(R.string.autolock_5m)
+    else -> stringResource(R.string.autolock_15m)
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+private fun clipLabel(seconds: Int): String = when (seconds) {
+    0 -> stringResource(R.string.never)
+    15 -> stringResource(R.string.clip_15)
+    60 -> stringResource(R.string.clip_60)
+    else -> stringResource(R.string.clip_30)
+}
+
+@Composable
+fun SectionTitle(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.titleSmall,
@@ -292,7 +390,7 @@ private fun SectionTitle(text: String) {
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String, onClick: () -> Unit) {
+fun SettingRow(title: String, subtitle: String, onClick: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(16.dp)
     ) {
@@ -323,7 +421,7 @@ private fun OptionsDialog(
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
     )
 }
 
@@ -333,35 +431,35 @@ private fun ChangePasswordDialog(onDismiss: () -> Unit, onChanged: () -> Unit) {
     var current by remember { mutableStateOf("") }
     var new by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
+    var errorRes by remember { mutableStateOf<Int?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cambiar contraseña maestra") },
+        title = { Text(stringResource(R.string.set_change_master)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                PasswordField(current, { current = it; error = null }, "Contraseña actual", modifier = Modifier.fillMaxWidth())
-                PasswordField(new, { new = it; error = null }, "Nueva contraseña", modifier = Modifier.fillMaxWidth())
+                PasswordField(current, { current = it; errorRes = null }, stringResource(R.string.change_pwd_current), modifier = Modifier.fillMaxWidth())
+                PasswordField(new, { new = it; errorRes = null }, stringResource(R.string.change_pwd_new), modifier = Modifier.fillMaxWidth())
                 if (new.isNotEmpty()) StrengthBar(new, Modifier.fillMaxWidth())
-                PasswordField(confirm, { confirm = it; error = null }, "Repite la nueva", modifier = Modifier.fillMaxWidth())
-                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                PasswordField(confirm, { confirm = it; errorRes = null }, stringResource(R.string.change_pwd_repeat), modifier = Modifier.fillMaxWidth())
+                errorRes?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.error) }
             }
         },
         confirmButton = {
             TextButton(onClick = {
                 when {
-                    new.length < 8 -> error = "Usa al menos 8 caracteres"
-                    new != confirm -> error = "Las contraseñas no coinciden"
+                    new.length < 8 -> errorRes = R.string.setup_min_chars
+                    new != confirm -> errorRes = R.string.setup_no_match
                     else -> {
                         val ok = VaultRepository.changeMasterPassword(
                             context, current.toCharArray(), new.toCharArray()
                         )
-                        if (ok) onChanged() else error = "La contraseña actual no es correcta"
+                        if (ok) onChanged() else errorRes = R.string.change_pwd_wrong
                     }
                 }
-            }) { Text("Cambiar") }
+            }) { Text(stringResource(R.string.change_pwd_button)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }
 
@@ -370,16 +468,16 @@ private fun ImportDialog(onDismiss: () -> Unit, onImport: (String) -> Unit) {
     var password by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Importar copia de seguridad") },
+        title = { Text(stringResource(R.string.import_dialog_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Introduce la contraseña maestra con la que se creó esa copia.")
-                PasswordField(password, { password = it }, "Contraseña de la copia", modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.import_dialog_body))
+                PasswordField(password, { password = it }, stringResource(R.string.import_dialog_label), modifier = Modifier.fillMaxWidth())
             }
         },
         confirmButton = {
-            TextButton(onClick = { onImport(password) }) { Text("Importar") }
+            TextButton(onClick = { onImport(password) }) { Text(stringResource(R.string.import_button)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
 }

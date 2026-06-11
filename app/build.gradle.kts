@@ -17,10 +17,10 @@ android {
 
     defaultConfig {
         applicationId = "com.passvault.app"
-        minSdk = 26
+        minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     signingConfigs {
@@ -36,7 +36,12 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             if (keystoreProps.isNotEmpty()) {
                 signingConfig = signingConfigs.getByName("release")
             }
@@ -64,4 +69,11 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.autofill:autofill:1.1.0")
+    // KDF resistente a GPU para la clave maestra
+    implementation("org.signal:argon2:13.1")
+    // Escaneo de códigos QR para secretos TOTP
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+
+    testImplementation("junit:junit:4.13.2")
 }

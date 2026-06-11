@@ -1,9 +1,10 @@
 package com.passvault.app.util
 
 import androidx.compose.ui.graphics.Color
+import com.passvault.app.R
 import kotlin.math.log2
 
-data class StrengthResult(val score: Int, val label: String, val color: Color, val entropyBits: Int)
+data class StrengthResult(val score: Int, val labelRes: Int, val color: Color, val entropyBits: Int)
 
 object PasswordStrength {
 
@@ -15,9 +16,9 @@ object PasswordStrength {
     )
 
     fun evaluate(password: String): StrengthResult {
-        if (password.isEmpty()) return StrengthResult(0, "Vacía", Color(0xFF6E7681), 0)
+        if (password.isEmpty()) return StrengthResult(0, R.string.strength_empty, Color(0xFF6E7681), 0)
         if (password.lowercase() in COMMON) {
-            return StrengthResult(0, "Muy débil (común)", Color(0xFFF85149), 0)
+            return StrengthResult(0, R.string.strength_common, Color(0xFFF85149), 0)
         }
 
         var pool = 0
@@ -36,11 +37,11 @@ object PasswordStrength {
         val bits = (effectiveLength * log2(pool.toDouble().coerceAtLeast(2.0))).toInt()
 
         return when {
-            bits < 28 -> StrengthResult(0, "Muy débil", Color(0xFFF85149), bits)
-            bits < 36 -> StrengthResult(1, "Débil", Color(0xFFF0883E), bits)
-            bits < 60 -> StrengthResult(2, "Aceptable", Color(0xFFD29922), bits)
-            bits < 90 -> StrengthResult(3, "Fuerte", Color(0xFF3FB950), bits)
-            else -> StrengthResult(4, "Muy fuerte", Color(0xFF2EA043), bits)
+            bits < 28 -> StrengthResult(0, R.string.strength_very_weak, Color(0xFFF85149), bits)
+            bits < 36 -> StrengthResult(1, R.string.strength_weak, Color(0xFFF0883E), bits)
+            bits < 60 -> StrengthResult(2, R.string.strength_fair, Color(0xFFD29922), bits)
+            bits < 90 -> StrengthResult(3, R.string.strength_strong, Color(0xFF3FB950), bits)
+            else -> StrengthResult(4, R.string.strength_very_strong, Color(0xFF2EA043), bits)
         }
     }
 }

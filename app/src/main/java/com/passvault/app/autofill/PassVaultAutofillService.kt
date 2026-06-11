@@ -1,7 +1,9 @@
 package com.passvault.app.autofill
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
 import android.service.autofill.Dataset
@@ -13,9 +15,14 @@ import android.service.autofill.SaveInfo
 import android.service.autofill.SaveRequest
 import android.view.autofill.AutofillValue
 import android.widget.RemoteViews
+import android.widget.inline.InlinePresentationSpec
+import androidx.autofill.inline.v1.InlineSuggestionUi
+import com.passvault.app.R
 import com.passvault.app.data.Categories
+import com.passvault.app.data.EntryType
 import com.passvault.app.data.VaultEntry
 import com.passvault.app.data.VaultRepository
+import com.passvault.app.util.DomainUtil
 
 class PassVaultAutofillService : AutofillService() {
 
@@ -40,104 +47,204 @@ class PassVaultAutofillService : AutofillService() {
             return
         }
 
+        val inlineSpecs: List<InlinePresentationSpec> =
+            if (Build.VERSION.SDK_INT >= 30) {
+                request.inlineSuggestionsRequest?.inlinePresentationSpecs ?: emptyList()
+            } else {
+                emptyList()
+            }
+
         val response = if (VaultRepository.isUnlocked()) {
-            buildUnlockedResponse(parsed)
+            buildUnlockedResponse(parsed, inlineSpecs)
         } else {
-            buildLockedResponse(parsed)
+            buildLockedResponse(parsed, inlineSpecs)
         }
         callback.onSuccess(response)
     }
 
-    private fun buildUnlockedResponse(parsed: ParsedStructure): FillResponse? {
+    private fun buildUnlockedResponse(
+        parsed: ParsedStructure,
+        inlineSpecs: List<InlinePresentationSpec>,
+    ): FillResponse? {
         val matches = AutofillParser.matchEntries(VaultRepository.entries.toList(), parsed)
-        if (matches.isEmpty()) return null
         val builder = FillResponse.Builder()
-        matches.forEach { entry ->
-            builder.addDataset(buildDataset(entry, parsed) ?: return@forEach)
+        var hasContent = false
+        matches.forEachIndexed { i, entry ->
+            val dataset = buildDataset(
+                this, entry, parsed, inlineSpecs.getOrNull(i)
+            ) ?: return@forEachIndexed
+            builder.addDataset(dataset)
+            hasContent = true
         }
-        addSaveInfo(builder, parsed)
+        val saveAdded = addSaveInfo(builder, parsed)
+        if (!hasContent && !saveAdded) return null
         return builder.build()
     }
 
-    private fun buildLockedResponse(parsed: ParsedStructure): FillResponse {
+    private fun buildLockedResponse(
+        parsed: ParsedStructure,
+        inlineSpecs: List<InlinePresentationSpec>,
+    ): FillResponse {
         val intent = Intent(this, AutofillAuthActivity::class.java)
         val pending = PendingIntent.getActivity(
             this, 1001, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
-        val presentation = RemoteViews(packageName, android.R.layout.simple_list_item_1).apply {
-            setTextViewText(android.R.id.text1, "🔒 Desbloquear PassVault")
-        }
+        val text = getString(R.string.autofill_unlock_to_fill)
+        val presentation = simplePresentation(text)
         val ids = listOfNotNull(parsed.usernameId, parsed.passwordId).toTypedArray()
         val builder = FillResponse.Builder()
-            .setAuthentication(ids, pending.intentSender, presentation)
+        if (Build.VERSION.SDK_INT >= 30 && inlineSpecs.isNotEmpty()) {
+            val inline = inlinePresentation(this, text, inlineSpecs.first())
+            if (inline != null) {
+                builder.setAuthentication(ids, pending.intentSender, presentation, inline)
+            } else {
+                builder.setAuthentication(ids, pending.intentSender, presentation)
+            }
+        } else {
+            builder.setAuthentication(ids, pending.intentSender, presentation)
+        }
         addSaveInfo(builder, parsed)
         return builder.build()
     }
 
-    private fun addSaveInfo(builder: FillResponse.Builder, parsed: ParsedStructure) {
+    /** Pide al sistema que ofrezca guardar credenciales nuevas. */
+    private fun addSaveInfo(builder: FillResponse.Builder, parsed: ParsedStructure): Boolean {
+        if (parsed.passwordId == null) return false
         val ids = listOfNotNull(parsed.usernameId, parsed.passwordId)
-        if (parsed.passwordId != null) {
-            builder.setSaveInfo(
-                SaveInfo.Builder(
-                    SaveInfo.SAVE_DATA_TYPE_USERNAME or SaveInfo.SAVE_DATA_TYPE_PASSWORD,
-                    ids.toTypedArray()
-                ).build()
-            )
+        val saveBuilder = SaveInfo.Builder(
+            SaveInfo.SAVE_DATA_TYPE_USERNAME or SaveInfo.SAVE_DATA_TYPE_PASSWORD,
+            ids.toTypedArray()
+        )
+        // En navegadores el formulario puede desaparecer sin "commit" explícito
+        if (parsed.webDomain.isNotBlank()) {
+            saveBuilder.setFlags(SaveInfo.FLAG_SAVE_ON_ALL_VIEWS_INVISIBLE)
         }
+        builder.setSaveInfo(saveBuilder.build())
+        return true
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        if (!VaultRepository.isUnlocked()) {
-            callback.onFailure("Desbloquea PassVault para guardar")
-            return
-        }
         val structure = request.fillContexts.lastOrNull()?.structure
         if (structure == null) {
-            callback.onFailure("Sin datos")
+            callback.onFailure(getString(R.string.autofill_no_data))
             return
         }
         val parsed = AutofillParser.parse(structure)
         if (parsed.passwordValue.isBlank()) {
-            callback.onFailure("Sin contraseña que guardar")
+            callback.onFailure(getString(R.string.autofill_nothing_to_save))
             return
         }
-        val name = parsed.webDomain.ifBlank {
-            parsed.packageName.split('.').lastOrNull { it.length > 2 } ?: parsed.packageName
+
+        if (VaultRepository.isUnlocked()) {
+            saveCredential(this, parsed)
+            callback.onSuccess()
+        } else {
+            // Bóveda bloqueada: abre una pantalla para desbloquear y guardar
+            val intent = Intent(this, SavePromptActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(SavePromptActivity.EXTRA_TITLE, suggestedTitle(parsed))
+                putExtra(SavePromptActivity.EXTRA_USERNAME, parsed.usernameValue)
+                putExtra(SavePromptActivity.EXTRA_PASSWORD, parsed.passwordValue)
+                putExtra(SavePromptActivity.EXTRA_URL, parsed.webDomain)
+            }
+            startActivity(intent)
+            callback.onSuccess()
         }
-        VaultRepository.addEntry(
-            this,
-            VaultEntry(
-                title = name.replaceFirstChar { it.uppercase() },
-                username = parsed.usernameValue,
-                password = parsed.passwordValue,
-                url = parsed.webDomain,
-                category = Categories.LOGIN,
-            )
-        )
-        callback.onSuccess()
     }
 
     companion object {
-        fun buildDataset(entry: VaultEntry, parsed: ParsedStructure): Dataset? {
-            if (!parsed.hasFields()) return null
-            val builder = Dataset.Builder()
-            val label = entry.title.ifBlank { entry.username.ifBlank { "Sin nombre" } }
-            val subtitle = entry.username
-            parsed.usernameId?.let { id ->
-                val rv = presentation("$label  ·  $subtitle")
-                builder.setValue(id, AutofillValue.forText(entry.username), rv)
+
+        fun suggestedTitle(parsed: ParsedStructure): String {
+            val name = DomainUtil.registrableDomain(parsed.webDomain).ifBlank {
+                parsed.packageName.split('.').lastOrNull { it.length > 2 } ?: parsed.packageName
             }
-            parsed.passwordId?.let { id ->
-                val rv = presentation("$label  ·  $subtitle")
-                builder.setValue(id, AutofillValue.forText(entry.password), rv)
-            }
-            return builder.build()
+            return name.substringBefore('.').replaceFirstChar { it.uppercase() }
         }
 
-        private fun presentation(text: String): RemoteViews =
-            RemoteViews("com.passvault.app", android.R.layout.simple_list_item_1).apply {
-                setTextViewText(android.R.id.text1, "🔑 $text")
+        fun saveCredential(context: Context, parsed: ParsedStructure) {
+            // Si ya existe la misma credencial, actualiza la contraseña en vez de duplicar
+            val existing = VaultRepository.activeEntries().firstOrNull {
+                it.username.equals(parsed.usernameValue, ignoreCase = true) &&
+                    parsed.webDomain.isNotBlank() &&
+                    DomainUtil.matches(it.url, parsed.webDomain)
             }
+            if (existing != null) {
+                if (existing.password != parsed.passwordValue) {
+                    VaultRepository.updateEntry(
+                        context,
+                        existing.copy(
+                            password = parsed.passwordValue,
+                            updatedAt = System.currentTimeMillis(),
+                            passwordChangedAt = System.currentTimeMillis(),
+                        )
+                    )
+                }
+            } else {
+                VaultRepository.addEntry(
+                    context,
+                    VaultEntry(
+                        type = EntryType.LOGIN,
+                        title = suggestedTitle(parsed),
+                        username = parsed.usernameValue,
+                        password = parsed.passwordValue,
+                        url = parsed.webDomain,
+                        category = Categories.LOGIN,
+                    )
+                )
+            }
+        }
+
+        fun simplePresentation(text: String): RemoteViews =
+            RemoteViews("com.passvault.app", android.R.layout.simple_list_item_1).apply {
+                setTextViewText(android.R.id.text1, text)
+            }
+
+        /** Sugerencia para mostrar dentro del teclado (Android 11+). */
+        fun inlinePresentation(
+            context: Context,
+            text: String,
+            spec: InlinePresentationSpec?,
+        ): android.service.autofill.InlinePresentation? {
+            if (Build.VERSION.SDK_INT < 30 || spec == null) return null
+            return try {
+                val attribution = PendingIntent.getActivity(
+                    context, 2001,
+                    Intent(context, com.passvault.app.MainActivity::class.java),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+                val content = InlineSuggestionUi.newContentBuilder(attribution)
+                    .setTitle(text)
+                    .build()
+                android.service.autofill.InlinePresentation(content.slice, spec, false)
+            } catch (e: Exception) {
+                null
+            }
+        }
+
+        fun buildDataset(
+            context: Context,
+            entry: VaultEntry,
+            parsed: ParsedStructure,
+            inlineSpec: InlinePresentationSpec? = null,
+        ): Dataset? {
+            if (!parsed.hasFields()) return null
+            val builder = Dataset.Builder()
+            val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
+            val display = if (entry.username.isBlank()) "🔑 $label" else "🔑 $label · ${entry.username}"
+            val rv = simplePresentation(display)
+            val inline = inlinePresentation(context, label, inlineSpec)
+
+            fun set(id: android.view.autofill.AutofillId, value: String) {
+                if (Build.VERSION.SDK_INT >= 30 && inline != null) {
+                    builder.setValue(id, AutofillValue.forText(value), rv, inline)
+                } else {
+                    builder.setValue(id, AutofillValue.forText(value), rv)
+                }
+            }
+            parsed.usernameId?.let { set(it, entry.username) }
+            parsed.passwordId?.let { set(it, entry.password) }
+            return builder.build()
+        }
     }
 }

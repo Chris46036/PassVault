@@ -1,11 +1,8 @@
 package com.passvault.app.autofill
 
-import android.app.assist.AssistStructure
-import android.content.Intent
 import android.os.Bundle
-import android.service.autofill.FillResponse
 import android.view.WindowManager
-import android.view.autofill.AutofillManager
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
@@ -24,19 +21,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.passvault.app.R
 import com.passvault.app.data.VaultRepository
 import com.passvault.app.security.BiometricHelper
+import com.passvault.app.ui.PasswordField
 import com.passvault.app.ui.theme.PassVaultTheme
 
 /**
- * Pantalla de desbloqueo lanzada por el sistema de Autofill cuando la bóveda
- * está bloqueada. Al desbloquear, devuelve los datasets que encajan.
+ * Se abre cuando el sistema detecta credenciales nuevas pero la bóveda está
+ * bloqueada: pide desbloquear y las guarda.
  */
-class AutofillAuthActivity : FragmentActivity() {
+class SavePromptActivity : FragmentActivity() {
+
+    companion object {
+        const val EXTRA_TITLE = "title"
+        const val EXTRA_USERNAME = "username"
+        const val EXTRA_PASSWORD = "password"
+        const val EXTRA_URL = "url"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,11 +49,31 @@ class AutofillAuthActivity : FragmentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+        val credTitle = intent.getStringExtra(EXTRA_TITLE) ?: ""
+        val credUser = intent.getStringExtra(EXTRA_USERNAME) ?: ""
+        val credPass = intent.getStringExtra(EXTRA_PASSWORD) ?: ""
+        val credUrl = intent.getStringExtra(EXTRA_URL) ?: ""
+
+        fun saveAndFinish() {
+            val parsed = ParsedStructure(
+                usernameValue = credUser,
+                passwordValue = credPass,
+                webDomain = credUrl,
+            )
+            PassVaultAutofillService.saveCredential(this, parsed)
+            Toast.makeText(this, getString(R.string.save_prompt_saved), Toast.LENGTH_LONG).show()
+            finish()
+        }
+
+        if (VaultRepository.isUnlocked()) {
+            saveAndFinish()
+            return
+        }
 
         if (BiometricHelper.isEnabled(this) && BiometricHelper.canUseBiometric(this)) {
             BiometricHelper.promptUnlock(this, onSuccess = { keyBytes ->
-                if (VaultRepository.unlockWithKeyBytes(this, keyBytes)) finishWithDatasets()
-            }, onFail = { /* el usuario puede usar la contraseña abajo */ })
+                if (VaultRepository.unlockWithKeyBytes(this, keyBytes)) saveAndFinish()
+            }, onFail = { /* puede usar la contraseña abajo */ })
         }
 
         setContent {
@@ -62,16 +87,23 @@ class AutofillAuthActivity : FragmentActivity() {
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            stringResource(R.string.unlock_title),
+                            stringResource(R.string.save_prompt_title),
                             style = MaterialTheme.typography.headlineSmall,
+                            textAlign = TextAlign.Center,
                         )
-                        OutlinedTextField(
+                        Text(
+                            stringResource(R.string.save_prompt_body, credTitle.ifBlank { credUrl }, credUser),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 12.dp),
+                        )
+                        PasswordField(
                             value = password,
                             onValueChange = { password = it; error = false },
-                            label = { Text(stringResource(R.string.master_password)) },
-                            visualTransformation = PasswordVisualTransformation(),
+                            label = stringResource(R.string.master_password),
                             isError = error,
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                            modifier = Modifier.fillMaxWidth(),
                         )
                         if (error) {
                             Text(
@@ -82,42 +114,21 @@ class AutofillAuthActivity : FragmentActivity() {
                         }
                         Button(
                             onClick = {
-                                if (VaultRepository.unlock(this@AutofillAuthActivity, password.toCharArray())) {
-                                    finishWithDatasets()
+                                if (VaultRepository.unlock(this@SavePromptActivity, password.toCharArray())) {
+                                    saveAndFinish()
                                 } else {
                                     error = true
                                 }
                             },
                             modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                        ) { Text(stringResource(R.string.autofill_unlock_and_fill)) }
+                        ) { Text(stringResource(R.string.save_prompt_unlock_and_save)) }
+                        OutlinedButton(
+                            onClick = { finish() },
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        ) { Text(stringResource(R.string.cancel)) }
                     }
                 }
             }
         }
-    }
-
-    private fun finishWithDatasets() {
-        @Suppress("DEPRECATION")
-        val structure: AssistStructure? =
-            intent.getParcelableExtra(AutofillManager.EXTRA_ASSIST_STRUCTURE)
-        if (structure == null) {
-            setResult(RESULT_CANCELED)
-            finish()
-            return
-        }
-        val parsed = AutofillParser.parse(structure)
-        val matches = AutofillParser.matchEntries(VaultRepository.entries.toList(), parsed)
-        if (matches.isEmpty()) {
-            setResult(RESULT_CANCELED)
-            finish()
-            return
-        }
-        val builder = FillResponse.Builder()
-        matches.forEach { entry ->
-            PassVaultAutofillService.buildDataset(this, entry, parsed)?.let { builder.addDataset(it) }
-        }
-        val reply = Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, builder.build())
-        setResult(RESULT_OK, reply)
-        finish()
     }
 }

@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.passvault.app.R
+import com.passvault.app.data.EntryType
 import com.passvault.app.data.VaultEntry
 import com.passvault.app.data.VaultRepository
 import com.passvault.app.util.Hibp
@@ -47,7 +51,9 @@ import kotlinx.coroutines.withContext
 @Composable
 fun AuditScreen(modifier: Modifier = Modifier, onOpenEntry: (VaultEntry) -> Unit) {
     val scope = rememberCoroutineScope()
-    val entries = VaultRepository.entries.filter { it.password.isNotBlank() }
+    val entries = VaultRepository.entries.filter {
+        !it.isDeleted && it.type == EntryType.LOGIN && it.password.isNotBlank()
+    }
 
     val weak = entries.filter { PasswordStrength.evaluate(it.password).score < 2 }
     val reusedGroups = entries.groupBy { it.password }.filter { it.value.size > 1 }
@@ -71,7 +77,7 @@ fun AuditScreen(modifier: Modifier = Modifier, onOpenEntry: (VaultEntry) -> Unit
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Text("Auditoría de seguridad", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.audit_title), style = MaterialTheme.typography.headlineSmall)
         }
         item {
             Card(Modifier.fillMaxWidth()) {
@@ -85,9 +91,9 @@ fun AuditScreen(modifier: Modifier = Modifier, onOpenEntry: (VaultEntry) -> Unit
                             else -> Color(0xFFF85149)
                         },
                     )
-                    Text("Puntuación de seguridad", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.audit_score_label), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
-                        "${entries.size} contraseñas analizadas",
+                        stringResource(R.string.audit_analyzed, entries.size),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -125,54 +131,56 @@ fun AuditScreen(modifier: Modifier = Modifier, onOpenEntry: (VaultEntry) -> Unit
                 if (checking) {
                     CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(8.dp))
-                    Text("Comprobando filtraciones…")
+                    Text(stringResource(R.string.audit_checking))
                 } else {
-                    Text("Comprobar filtraciones (Have I Been Pwned)")
+                    Text(stringResource(R.string.audit_check_hibp))
                 }
             }
         }
         if (checkError) {
             item {
-                IssueHeader(Icons.Filled.CloudOff, "Sin conexión: no se pudo comprobar", Color(0xFF8B949E))
+                IssueHeader(Icons.Filled.CloudOff, stringResource(R.string.audit_offline), Color(0xFF8B949E))
             }
         }
         breached?.let { list ->
             item {
                 IssueHeader(
                     Icons.Filled.Error,
-                    if (list.isEmpty()) "Ninguna contraseña aparece en filtraciones conocidas 🎉"
-                    else "Filtradas en brechas de datos (${list.size}) — cámbialas ya",
+                    if (list.isEmpty()) stringResource(R.string.audit_breached_none)
+                    else stringResource(R.string.audit_breached, list.size),
                     if (list.isEmpty()) Color(0xFF3FB950) else Color(0xFFF85149),
                 )
             }
             items(list, key = { "b" + it.first.id }) { (entry, count) ->
-                IssueCard(entry, "Vista en $count filtraciones", onOpenEntry)
+                IssueCard(entry, stringResource(R.string.audit_breach_count, count), onOpenEntry)
             }
         }
 
         if (weak.isNotEmpty()) {
-            item { IssueHeader(Icons.Filled.Warning, "Contraseñas débiles (${weak.size})", Color(0xFFF0883E)) }
-            items(weak, key = { "w" + it.id }) { IssueCard(it, PasswordStrength.evaluate(it.password).label, onOpenEntry) }
+            item { IssueHeader(Icons.Filled.Warning, stringResource(R.string.audit_weak, weak.size), Color(0xFFF0883E)) }
+            items(weak, key = { "w" + it.id }) {
+                IssueCard(it, stringResource(PasswordStrength.evaluate(it.password).labelRes), onOpenEntry)
+            }
         }
         if (reused.isNotEmpty()) {
-            item { IssueHeader(Icons.Filled.Repeat, "Contraseñas reutilizadas (${reused.size})", Color(0xFFD29922)) }
+            item { IssueHeader(Icons.Filled.Repeat, stringResource(R.string.audit_reused, reused.size), Color(0xFFD29922)) }
             items(reused, key = { "r" + it.id }) { entry ->
                 val times = reusedGroups[entry.password]?.size ?: 0
-                IssueCard(entry, "Usada en $times entradas", onOpenEntry)
+                IssueCard(entry, stringResource(R.string.audit_reused_detail, times), onOpenEntry)
             }
         }
         if (oldOnes.isNotEmpty()) {
-            item { IssueHeader(Icons.Filled.History, "Sin cambiar hace más de un año (${oldOnes.size})", Color(0xFF8B949E)) }
+            item { IssueHeader(Icons.Filled.History, stringResource(R.string.audit_old, oldOnes.size), Color(0xFF8B949E)) }
             items(oldOnes, key = { "o" + it.id }) { entry ->
                 val days = (System.currentTimeMillis() - entry.passwordChangedAt) / 86_400_000L
-                IssueCard(entry, "Hace $days días", onOpenEntry)
+                IssueCard(entry, stringResource(R.string.audit_old_detail, days), onOpenEntry)
             }
         }
 
         if (entries.isNotEmpty() && weak.isEmpty() && reused.isEmpty() && oldOnes.isEmpty() && breached?.isEmpty() != false) {
             item {
                 Text(
-                    "Todo en orden. Tus contraseñas son fuertes y únicas. 💪",
+                    stringResource(R.string.audit_all_good),
                     color = Color(0xFF3FB950),
                     modifier = Modifier.padding(top = 8.dp),
                 )
@@ -181,7 +189,7 @@ fun AuditScreen(modifier: Modifier = Modifier, onOpenEntry: (VaultEntry) -> Unit
         if (entries.isEmpty()) {
             item {
                 Text(
-                    "Añade contraseñas a tu bóveda para analizarlas.",
+                    stringResource(R.string.audit_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -207,10 +215,10 @@ private fun IssueCard(entry: VaultEntry, detail: String, onOpenEntry: (VaultEntr
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(entry.title.ifBlank { "Sin nombre" }, style = MaterialTheme.typography.titleSmall)
+                Text(entry.title.ifBlank { stringResource(R.string.untitled) }, style = MaterialTheme.typography.titleSmall)
                 Text(detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            androidx.compose.material3.TextButton(onClick = { onOpenEntry(entry) }) { Text("Ver") }
+            TextButton(onClick = { onOpenEntry(entry) }) { Text(stringResource(R.string.audit_view)) }
         }
     }
 }

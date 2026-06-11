@@ -1,5 +1,9 @@
 package com.passvault.app.crypto
 
+import org.signal.argon2.Argon2
+import org.signal.argon2.MemoryCost
+import org.signal.argon2.Type
+import org.signal.argon2.Version
 import java.nio.ByteBuffer
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -10,62 +14,120 @@ import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Cifrado de la bóveda: AES-256-GCM con clave derivada del master password
- * mediante PBKDF2-HMAC-SHA256. Formato de archivo:
- *   magic "PVLT" (4) | version (1) | iterations (4) | salt (16) | iv (12) | ciphertext
+ * Cifrado de la bóveda: AES-256-GCM con clave derivada del master password.
+ *
+ * Formato v2 (actual, Argon2id):
+ *   "PVLT" (4) | version=2 (1) | memKiB (4) | iterations (4) | parallelism (4) | salt (16) | iv (12) | ciphertext
+ * Formato v1 (legado, PBKDF2-HMAC-SHA256; se sigue leyendo para bóvedas y copias antiguas):
+ *   "PVLT" (4) | version=1 (1) | iterations (4) | salt (16) | iv (12) | ciphertext
  */
 object CryptoManager {
 
-    const val DEFAULT_ITERATIONS = 250_000
     private const val SALT_LEN = 16
     private const val IV_LEN = 12
-    private const val KEY_BITS = 256
+    private const val KEY_BYTES = 32
     private val MAGIC = byteArrayOf(0x50, 0x56, 0x4C, 0x54) // "PVLT"
-    private const val VERSION: Byte = 1
+
+    private const val VERSION_PBKDF2: Byte = 1
+    private const val VERSION_ARGON2: Byte = 2
+
+    // Parámetros Argon2id (mismos valores por defecto que usa Bitwarden)
+    const val ARGON2_MEM_KIB = 65536 // 64 MiB
+    const val ARGON2_ITERATIONS = 3
+    const val ARGON2_PARALLELISM = 4
 
     private val random = SecureRandom()
 
     fun randomSalt(): ByteArray = ByteArray(SALT_LEN).also { random.nextBytes(it) }
 
-    fun deriveKey(password: CharArray, salt: ByteArray, iterations: Int = DEFAULT_ITERATIONS): SecretKey {
-        val spec = PBEKeySpec(password, salt, iterations, KEY_BITS)
-        val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-        val keyBytes = factory.generateSecret(spec).encoded
-        spec.clearPassword()
+    /** Parámetros de derivación leídos de la cabecera de una bóveda. */
+    data class KdfParams(
+        val version: Byte,
+        val iterations: Int,
+        val memKiB: Int = 0,
+        val parallelism: Int = 0,
+    ) {
+        companion object {
+            fun current() = KdfParams(
+                VERSION_ARGON2, ARGON2_ITERATIONS, ARGON2_MEM_KIB, ARGON2_PARALLELISM
+            )
+        }
+    }
+
+    data class VaultHeader(
+        val kdf: KdfParams,
+        val salt: ByteArray,
+        val iv: ByteArray,
+        val ciphertext: ByteArray,
+    )
+
+    fun deriveKey(password: CharArray, salt: ByteArray, kdf: KdfParams): SecretKey {
+        val keyBytes = when (kdf.version) {
+            VERSION_ARGON2 -> {
+                val argon2 = Argon2.Builder(Version.V13)
+                    .type(Type.Argon2id)
+                    .memoryCost(MemoryCost.KiB(kdf.memKiB))
+                    .iterations(kdf.iterations)
+                    .parallelism(kdf.parallelism)
+                    .hashLength(KEY_BYTES)
+                    .build()
+                argon2.hash(String(password).toByteArray(Charsets.UTF_8), salt).hash
+            }
+            VERSION_PBKDF2 -> {
+                val spec = PBEKeySpec(password, salt, kdf.iterations, KEY_BYTES * 8)
+                val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                val bytes = factory.generateSecret(spec).encoded
+                spec.clearPassword()
+                bytes
+            }
+            else -> throw IllegalArgumentException("Versión de bóveda no soportada")
+        }
         return SecretKeySpec(keyBytes, "AES")
     }
 
-    /** Serializa y cifra el contenido de la bóveda en el formato de archivo. */
-    fun sealVault(plaintext: ByteArray, password: CharArray): ByteArray {
-        val salt = randomSalt()
-        val key = deriveKey(password, salt)
-        return sealVaultWithKey(plaintext, key, salt, DEFAULT_ITERATIONS)
-    }
-
-    fun sealVaultWithKey(plaintext: ByteArray, key: SecretKey, salt: ByteArray, iterations: Int): ByteArray {
+    /**
+     * Cifra el contenido escribiendo en la cabecera los mismos parámetros KDF
+     * con los que se derivó la clave (si no, la bóveda sería indescifrable).
+     */
+    fun sealVaultWithKey(plaintext: ByteArray, key: SecretKey, salt: ByteArray, kdf: KdfParams): ByteArray {
         val iv = ByteArray(IV_LEN).also { random.nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key, GCMParameterSpec(128, iv))
         val ct = cipher.doFinal(plaintext)
-        return ByteBuffer.allocate(MAGIC.size + 1 + 4 + SALT_LEN + IV_LEN + ct.size)
-            .put(MAGIC).put(VERSION).putInt(iterations).put(salt).put(iv).put(ct)
-            .array()
+        return when (kdf.version) {
+            VERSION_ARGON2 -> ByteBuffer.allocate(MAGIC.size + 1 + 12 + SALT_LEN + IV_LEN + ct.size)
+                .put(MAGIC).put(VERSION_ARGON2)
+                .putInt(kdf.memKiB).putInt(kdf.iterations).putInt(kdf.parallelism)
+                .put(salt).put(iv).put(ct)
+                .array()
+            VERSION_PBKDF2 -> ByteBuffer.allocate(MAGIC.size + 1 + 4 + SALT_LEN + IV_LEN + ct.size)
+                .put(MAGIC).put(VERSION_PBKDF2)
+                .putInt(kdf.iterations)
+                .put(salt).put(iv).put(ct)
+                .array()
+            else -> throw IllegalArgumentException("Versión de bóveda no soportada")
+        }
     }
-
-    data class VaultHeader(val iterations: Int, val salt: ByteArray, val iv: ByteArray, val ciphertext: ByteArray)
 
     fun parseVault(data: ByteArray): VaultHeader {
         require(data.size > MAGIC.size + 1 + 4 + SALT_LEN + IV_LEN) { "Archivo de bóveda inválido" }
         val buf = ByteBuffer.wrap(data)
         val magic = ByteArray(MAGIC.size).also { buf.get(it) }
         require(magic.contentEquals(MAGIC)) { "No es un archivo PassVault" }
-        val version = buf.get()
-        require(version == VERSION) { "Versión de bóveda no soportada" }
-        val iterations = buf.int
+        val kdf = when (val version = buf.get()) {
+            VERSION_PBKDF2 -> KdfParams(VERSION_PBKDF2, buf.int)
+            VERSION_ARGON2 -> {
+                val mem = buf.int
+                val iter = buf.int
+                val par = buf.int
+                KdfParams(VERSION_ARGON2, iter, mem, par)
+            }
+            else -> throw IllegalArgumentException("Versión de bóveda no soportada: $version")
+        }
         val salt = ByteArray(SALT_LEN).also { buf.get(it) }
         val iv = ByteArray(IV_LEN).also { buf.get(it) }
         val ct = ByteArray(buf.remaining()).also { buf.get(it) }
-        return VaultHeader(iterations, salt, iv, ct)
+        return VaultHeader(kdf, salt, iv, ct)
     }
 
     /** Devuelve null si la clave es incorrecta o el archivo fue manipulado. */
