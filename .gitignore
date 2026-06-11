@@ -1,0 +1,21 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Configuración local
+local.properties
+
+# Claves de firma — NUNCA subir al repositorio
+release.keystore
+keystore.properties
+*.jks
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Otros
+*.log
+.DS_Store
