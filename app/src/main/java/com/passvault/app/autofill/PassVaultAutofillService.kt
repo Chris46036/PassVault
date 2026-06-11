@@ -91,7 +91,7 @@ class PassVaultAutofillService : AutofillService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
         )
         val text = getString(R.string.autofill_unlock_to_fill)
-        val presentation = simplePresentation(text)
+        val presentation = simplePresentation(this, text)
         val ids = listOfNotNull(parsed.usernameId, parsed.passwordId).toTypedArray()
         val builder = FillResponse.Builder()
         if (Build.VERSION.SDK_INT >= 30 && inlineSpecs.isNotEmpty()) {
@@ -195,8 +195,8 @@ class PassVaultAutofillService : AutofillService() {
             }
         }
 
-        fun simplePresentation(text: String): RemoteViews =
-            RemoteViews("com.passvault.app", android.R.layout.simple_list_item_1).apply {
+        fun simplePresentation(context: Context, text: String): RemoteViews =
+            RemoteViews(context.packageName, android.R.layout.simple_list_item_1).apply {
                 setTextViewText(android.R.id.text1, text)
             }
 
@@ -232,7 +232,7 @@ class PassVaultAutofillService : AutofillService() {
             val builder = Dataset.Builder()
             val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
             val display = if (entry.username.isBlank()) "🔑 $label" else "🔑 $label · ${entry.username}"
-            val rv = simplePresentation(display)
+            val rv = simplePresentation(context, display)
             val inline = inlinePresentation(context, label, inlineSpec)
 
             fun set(id: android.view.autofill.AutofillId, value: String) {
