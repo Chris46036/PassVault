@@ -19,8 +19,8 @@ android {
         applicationId = "com.passvault.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4.0"
+        versionCode = 6
+        versionName = "1.4.1"
     }
 
     // Builds reproducibles: sin el bloque de dependencias cifrado de Google

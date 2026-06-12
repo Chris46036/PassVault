@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PassVault</string>
+    <string name="app_name">Offlock</string>
 
     <string name="cancel">Cancel</string>
     <string name="save">Save</string>
@@ -17,9 +17,9 @@
     <string name="untitled">Untitled</string>
     <string name="master_password">Master password</string>
     <string name="wrong_password">Wrong password</string>
-    <string name="unlock_title">Unlock PassVault</string>
+    <string name="unlock_title">Unlock Offlock</string>
 
-    <string name="setup_welcome">Welcome to PassVault</string>
+    <string name="setup_welcome">Welcome to Offlock</string>
     <string name="setup_explain">Create your master password. It is the only key to your vault: it is never stored anywhere and cannot be recovered if you forget it.</string>
     <string name="setup_repeat">Repeat the password</string>
     <string name="setup_min_chars">Use at least 8 characters</string>
@@ -158,7 +158,7 @@
     <string name="set_lock_now">Lock now</string>
     <string name="set_lock_now_sub">Closes the vault immediately</string>
     <string name="autofill_section">Autofill</string>
-    <string name="set_autofill_active">PassVault is your autofill service ✓</string>
+    <string name="set_autofill_active">Offlock is your autofill service ✓</string>
     <string name="set_autofill">Enable autofill</string>
     <string name="set_autofill_sub">Fills usernames and passwords in other apps and browsers</string>
     <string name="autofill_settings_error">Could not open autofill settings</string>
@@ -190,10 +190,10 @@
     <string name="trash_deleted_ago">Deleted %1$d days ago</string>
     <string name="support_section">Support the project</string>
     <string name="kofi_title">☕ Buy me a coffee on Ko-fi</string>
-    <string name="kofi_sub">If PassVault is useful to you, support it!</string>
+    <string name="kofi_sub">If Offlock is useful to you, support it!</string>
     <string name="browser_error">Could not open the browser</string>
     <string name="about_section">About</string>
-    <string name="about_title">PassVault %1$s</string>
+    <string name="about_title">Offlock %1$s</string>
     <string name="about_body">AES-256-GCM encryption with Argon2id. Everything is stored only on your device: nobody else, not even this app, can recover your master password.</string>
     <string name="autolock_immediately">When leaving the app</string>
     <string name="autolock_1m">After 1 minute</string>
@@ -209,19 +209,19 @@
     <string name="change_pwd_wrong">The current password is incorrect</string>
     <string name="change_pwd_done">Password updated. Re-enable biometrics if you used them.</string>
 
-    <string name="autofill_unlock_to_fill">🔒 Unlock PassVault</string>
+    <string name="autofill_unlock_to_fill">🔒 Unlock Offlock</string>
     <string name="autofill_unlock_and_fill">Unlock and fill</string>
     <string name="autofill_no_data">No data</string>
     <string name="autofill_nothing_to_save">No password to save</string>
-    <string name="save_prompt_title">Save to PassVault?</string>
+    <string name="save_prompt_title">Save to Offlock?</string>
     <string name="save_prompt_body">The account for %1$s (%2$s) will be saved. Unlock your vault to confirm.</string>
     <string name="save_prompt_unlock_and_save">Unlock and save</string>
-    <string name="save_prompt_saved">Credential saved to PassVault</string>
+    <string name="save_prompt_saved">Credential saved to Offlock</string>
 
     <!-- v1.3.0 -->
     <string name="totp_copied">2FA code copied to clipboard</string>
     <string name="type_passkey">Passkey</string>
-    <string name="passkey_created">Passkey saved to PassVault</string>
+    <string name="passkey_created">Passkey saved to Offlock</string>
     <string name="passkey_create_unlock">Unlock to create the passkey</string>
     <string name="set_passkeys">Passkey provider</string>
     <string name="set_passkeys_sub">Create and sign in with passkeys stored in your vault (Android 14+)</string>

@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "PassVault"
+rootProject.name = "Offlock"
 include(":app")

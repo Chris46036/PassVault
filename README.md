@@ -1,4 +1,4 @@
-# PassVault 🔐
+# Offlock 🔐
 
 **Gestor de contraseñas para Android — 100% local, de código abierto y de conocimiento cero.**
 
@@ -35,7 +35,7 @@ Tus contraseñas se cifran en tu dispositivo y nunca salen de él. Sin cuentas, 
 1. Descarga el APK desde [Releases](../../releases) (o compílalo tú mismo, abajo).
 2. Ábrelo en tu teléfono y acepta la instalación de orígenes desconocidos si te lo pide.
 3. Crea tu contraseña maestra. ⚠️ **No se puede recuperar si la olvidas** — ese es el precio del conocimiento cero.
-4. En **Ajustes → Autorrellenar**, activa PassVault como servicio de autofill del sistema.
+4. En **Ajustes → Autorrellenar**, activa Offlock como servicio de autofill del sistema.
 
 ## 🛠️ Compilar desde el código
 
@@ -43,7 +43,7 @@ Requisitos: JDK 17 y el Android SDK (API 34).
 
 ```bash
 git clone https://github.com/Chris46036/PassVault.git
-cd PassVault
+cd Offlock
 ./gradlew assembleRelease
 ```
 
@@ -72,7 +72,7 @@ keyPassword=...
 
 ## ☕ Apoya el proyecto
 
-Si PassVault te resulta útil, puedes [invitarme un café en Ko-fi](https://ko-fi.com/chris46036). ¡Gracias!
+Si Offlock te resulta útil, puedes [invitarme un café en Ko-fi](https://ko-fi.com/chris46036). ¡Gracias!
 
 ## 📄 Licencia
 

@@ -1,4 +1,4 @@
-PassVault es un gestor de contraseñas de conocimiento cero: todo se cifra en tu dispositivo con AES-256-GCM y una clave derivada por Argon2id. Sin cuentas, sin servidores, sin telemetría.
+Offlock es un gestor de contraseñas de conocimiento cero: todo se cifra en tu dispositivo con AES-256-GCM y una clave derivada por Argon2id. Sin cuentas, sin servidores, sin telemetría.
 
 Funciones:
 

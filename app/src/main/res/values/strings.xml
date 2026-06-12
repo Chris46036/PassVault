@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">PassVault</string>
+    <string name="app_name">Offlock</string>
 
     <!-- Generales -->
     <string name="cancel">Cancelar</string>
@@ -18,10 +18,10 @@
     <string name="untitled">Sin nombre</string>
     <string name="master_password">Contraseña maestra</string>
     <string name="wrong_password">Contraseña incorrecta</string>
-    <string name="unlock_title">Desbloquear PassVault</string>
+    <string name="unlock_title">Desbloquear Offlock</string>
 
     <!-- Primer uso -->
-    <string name="setup_welcome">Bienvenido a PassVault</string>
+    <string name="setup_welcome">Bienvenido a Offlock</string>
     <string name="setup_explain">Crea tu contraseña maestra. Es la única llave de tu bóveda: no se guarda en ningún sitio y no se puede recuperar si la olvidas.</string>
     <string name="setup_repeat">Repite la contraseña</string>
     <string name="setup_min_chars">Usa al menos 8 caracteres</string>
@@ -174,7 +174,7 @@
     <string name="set_lock_now">Bloquear ahora</string>
     <string name="set_lock_now_sub">Cierra la bóveda inmediatamente</string>
     <string name="autofill_section">Autorrellenar</string>
-    <string name="set_autofill_active">PassVault es tu servicio de autofill ✓</string>
+    <string name="set_autofill_active">Offlock es tu servicio de autofill ✓</string>
     <string name="set_autofill">Activar autorrellenado</string>
     <string name="set_autofill_sub">Rellena usuario y contraseña en otras apps y navegadores</string>
     <string name="autofill_settings_error">No se pudo abrir la configuración de autofill</string>
@@ -206,10 +206,10 @@
     <string name="trash_deleted_ago">Eliminado hace %1$d días</string>
     <string name="support_section">Apoya el proyecto</string>
     <string name="kofi_title">☕ Invítame un café en Ko-fi</string>
-    <string name="kofi_sub">Si PassVault te resulta útil, ¡apóyame!</string>
+    <string name="kofi_sub">Si Offlock te resulta útil, ¡apóyame!</string>
     <string name="browser_error">No se pudo abrir el navegador</string>
     <string name="about_section">Acerca de</string>
-    <string name="about_title">PassVault %1$s</string>
+    <string name="about_title">Offlock %1$s</string>
     <string name="about_body">Cifrado AES-256-GCM con Argon2id. Todo se guarda solo en tu dispositivo: nadie más, ni siquiera esta app, puede recuperar tu contraseña maestra.</string>
     <string name="autolock_immediately">Al salir de la app</string>
     <string name="autolock_1m">Tras 1 minuto</string>
@@ -226,19 +226,19 @@
     <string name="change_pwd_done">Contraseña actualizada. Vuelve a activar la biometría si la usabas.</string>
 
     <!-- Autofill -->
-    <string name="autofill_unlock_to_fill">🔒 Desbloquear PassVault</string>
+    <string name="autofill_unlock_to_fill">🔒 Desbloquear Offlock</string>
     <string name="autofill_unlock_and_fill">Desbloquear y rellenar</string>
     <string name="autofill_no_data">Sin datos</string>
     <string name="autofill_nothing_to_save">Sin contraseña que guardar</string>
-    <string name="save_prompt_title">¿Guardar en PassVault?</string>
+    <string name="save_prompt_title">¿Guardar en Offlock?</string>
     <string name="save_prompt_body">Se guardará la cuenta de %1$s (%2$s). Desbloquea tu bóveda para confirmar.</string>
     <string name="save_prompt_unlock_and_save">Desbloquear y guardar</string>
-    <string name="save_prompt_saved">Credencial guardada en PassVault</string>
+    <string name="save_prompt_saved">Credencial guardada en Offlock</string>
 
     <!-- v1.3.0 -->
     <string name="totp_copied">Código 2FA copiado al portapapeles</string>
     <string name="type_passkey">Passkey</string>
-    <string name="passkey_created">Passkey guardada en PassVault</string>
+    <string name="passkey_created">Passkey guardada en Offlock</string>
     <string name="passkey_create_unlock">Desbloquea para crear la passkey</string>
     <string name="set_passkeys">Proveedor de passkeys</string>
     <string name="set_passkeys_sub">Crea e inicia sesión con passkeys guardadas en tu bóveda (Android 14+)</string>
