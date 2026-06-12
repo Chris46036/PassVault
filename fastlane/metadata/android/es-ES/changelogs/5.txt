@@ -1,0 +1,8 @@
+• Freno anti fuerza bruta y borrado opcional tras N intentos fallidos
+• Confirmación de identidad para revelar datos de tarjeta y exportar
+• Bloqueo por inactividad aunque la app siga en pantalla
+• Calibración automática de Argon2 según el dispositivo
+• Autorrellenado de tarjetas en formularios de pago
+• Exportación a CSV sin cifrar (para migrar a otro gestor)
+• Mosaico de ajustes rápidos y diseño a dos paneles en tablets
+• Interfaz más limpia y builds reproducibles

@@ -294,6 +294,21 @@ private fun CardDetail(
     onToggleShow: (Boolean) -> Unit,
     copy: (String, String) -> Unit,
 ) {
+    val context = LocalContext.current
+    val confirmTitle = stringResource(R.string.confirm_reveal)
+
+    // Revelar el número o el CVV exige confirmar identidad (huella o PIN)
+    fun toggleWithConfirm(wanted: Boolean) {
+        val activity = context.findFragmentActivity()
+        if (!wanted || activity == null) {
+            onToggleShow(wanted)
+        } else {
+            com.passvault.app.security.BiometricHelper.confirmAction(activity, confirmTitle) {
+                onToggleShow(true)
+            }
+        }
+    }
+
     val number = live.extras["number"] ?: ""
     val holder = live.extras["holder"] ?: ""
     val expiry = live.extras["expiry"] ?: ""
@@ -305,7 +320,7 @@ private fun CardDetail(
             mono = true,
             onCopy = { copy("card", number.filter { it.isDigit() }) },
             extraAction = {
-                IconButton(onClick = { onToggleShow(!showSecret) }) {
+                IconButton(onClick = { toggleWithConfirm(!showSecret) }) {
                     Icon(
                         if (showSecret) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                         contentDescription = stringResource(R.string.show_hide),

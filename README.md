@@ -22,8 +22,12 @@ Tus contraseñas se cifran en tu dispositivo y nunca salen de él. Sin cuentas, 
 - 🕓 **Historial de contraseñas** y 🗑️ **papelera** con recuperación durante 30 días.
 - 📥 **Importación** — KeePass (`.kdbx`), Chrome, Bitwarden, LastPass y similares (CSV).
 - 💾 **Copias de seguridad** — exporta/importa la bóveda cifrada (`.pvlt`), **auto-respaldo a la carpeta que elijas** (SD, carpeta de Drive…) y 2 respaldos locales rotativos contra corrupción.
-- ⏱️ **Auto-bloqueo**, 📋 limpieza automática del portapapeles y 🚫 bloqueo de capturas de pantalla.
-- 🎨 **Material You** (colores dinámicos en Android 12+), widget de acceso rápido y atajos de aplicación.
+- 💳 **Autofill de tarjetas** — rellena número, vencimiento, CVV y titular en formularios de pago.
+- 🛡️ **Anti fuerza bruta** — retrasos crecientes tras intentos fallidos y, opcionalmente, **borrado de la bóveda tras N intentos**. Confirmación de identidad (huella/PIN) para revelar datos de tarjeta o exportar.
+- ⏱️ **Auto-bloqueo** (también por inactividad en pantalla), 📋 limpieza automática del portapapeles y 🚫 bloqueo de capturas de pantalla.
+- ⚖️ **Argon2 autocalibrado** — el coste de derivación se ajusta a tu dispositivo (~1 s), más duro en gama alta.
+- 📤 **Datos abiertos** — exporta a CSV sin cifrar cuando quieras migrar: tus datos son tuyos.
+- 🎨 **Material You** (colores dinámicos en Android 12+), widget, mosaico de ajustes rápidos, atajos de aplicación y diseño a dos paneles en tablets.
 - 🌍 **En español e inglés**, según el idioma del sistema. Compatible con **Android 7.0+** (~98% de los dispositivos).
 
 ## 📱 Instalación

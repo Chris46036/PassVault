@@ -64,4 +64,28 @@ class CsvImporterTest {
         assertNull(CsvImporter.parse("col1,col2\na,b\n"))
         assertNull(CsvImporter.parse(""))
     }
+
+    @Test
+    fun `exportar e importar devuelve las mismas entradas`() {
+        val original = listOf(
+            com.passvault.app.data.VaultEntry(
+                title = "Sitio, con coma",
+                username = "user@x.com",
+                password = "cla\"ve\ncon salto",
+                url = "https://x.com",
+                notes = "nota",
+                totpSecret = "JBSWY3DPEHPK3PXP",
+            ),
+            com.passvault.app.data.VaultEntry(title = "Simple", username = "u", password = "p"),
+        )
+        val csv = com.passvault.app.util.CsvExporter.export(original)
+        val reimported = CsvImporter.parse(csv)
+
+        assertNotNull(reimported)
+        assertEquals(2, reimported!!.size)
+        assertEquals("Sitio, con coma", reimported[0].title)
+        assertEquals("cla\"ve\ncon salto", reimported[0].password)
+        assertEquals("JBSWY3DPEHPK3PXP", reimported[0].totpSecret)
+        assertEquals("p", reimported[1].password)
+    }
 }

@@ -252,4 +252,17 @@
     <string name="widget_open">Open vault</string>
     <string name="widget_generator">Generator</string>
     <string name="shortcut_new">New item</string>
+
+    <!-- v1.4.0 -->
+    <string name="items_count">%1$d items</string>
+    <string name="unlock_cooldown">Too many failed attempts. Wait %1$d s.</string>
+    <string name="unlock_wiped">The vault was wiped after too many failed attempts.</string>
+    <string name="set_wipe">Wipe after failed attempts</string>
+    <string name="wipe_after_n">After %1$d attempts</string>
+    <string name="confirm_reveal">Confirm your identity to view this data</string>
+    <string name="set_export_csv">Export unencrypted CSV</string>
+    <string name="set_export_csv_sub">To migrate to another manager. The file is unprotected.</string>
+    <string name="export_csv_warn_title">Export unencrypted?</string>
+    <string name="export_csv_warn_body">The file will contain all your passwords in plain text. Keep it only as long as needed and delete it securely afterwards.</string>
+    <string name="export_csv_done">CSV exported. Remember to delete it when done!</string>
 </resources>

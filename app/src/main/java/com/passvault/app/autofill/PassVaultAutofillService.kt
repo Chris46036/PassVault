@@ -42,7 +42,7 @@ class PassVaultAutofillService : AutofillService() {
             return
         }
         val parsed = AutofillParser.parse(structure)
-        if (!parsed.hasFields()) {
+        if (!parsed.hasFields() && !parsed.hasCardFields()) {
             callback.onSuccess(null)
             return
         }
@@ -66,7 +66,11 @@ class PassVaultAutofillService : AutofillService() {
         parsed: ParsedStructure,
         inlineSpecs: List<InlinePresentationSpec>,
     ): FillResponse? {
-        val matches = AutofillParser.matchEntries(VaultRepository.entries.toList(), parsed)
+        val matches = if (parsed.hasFields()) {
+            AutofillParser.matchEntries(VaultRepository.entries.toList(), parsed)
+        } else {
+            AutofillParser.matchCards(VaultRepository.entries.toList())
+        }
         val builder = FillResponse.Builder()
         var hasContent = false
         matches.forEachIndexed { i, entry ->
@@ -92,7 +96,10 @@ class PassVaultAutofillService : AutofillService() {
         )
         val text = getString(R.string.autofill_unlock_to_fill)
         val presentation = simplePresentation(this, text)
-        val ids = listOfNotNull(parsed.usernameId, parsed.passwordId).toTypedArray()
+        val ids = listOfNotNull(
+            parsed.usernameId, parsed.passwordId,
+            parsed.cardNumberId, parsed.cardCvvId, parsed.cardExpiryId, parsed.cardHolderId,
+        ).toTypedArray()
         val builder = FillResponse.Builder()
         if (Build.VERSION.SDK_INT >= 30 && inlineSpecs.isNotEmpty()) {
             val inline = inlinePresentation(this, text, inlineSpecs.first())
@@ -226,23 +233,38 @@ class PassVaultAutofillService : AutofillService() {
          * Dataset autenticado "hueco": al elegirlo se lanza AutofillSelectActivity,
          * que devuelve las credenciales reales y copia el código 2FA si lo hay.
          */
+        private fun entryLabel(context: Context, entry: VaultEntry): String {
+            val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
+            return if (entry.type == EntryType.CARD) {
+                val digits = (entry.extras["number"] ?: "").filter { it.isDigit() }
+                "💳 $label · ····${digits.takeLast(4)}"
+            } else if (entry.username.isBlank()) {
+                "🔑 $label"
+            } else {
+                "🔑 $label · ${entry.username}"
+            }
+        }
+
         fun buildStubDataset(
             context: Context,
             entry: VaultEntry,
             parsed: ParsedStructure,
             inlineSpec: InlinePresentationSpec? = null,
         ): Dataset? {
-            if (!parsed.hasFields()) return null
+            if (!parsed.hasFields() && !parsed.hasCardFields()) return null
             val builder = Dataset.Builder()
-            val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
-            val display = if (entry.username.isBlank()) "🔑 $label" else "🔑 $label · ${entry.username}"
+            val display = entryLabel(context, entry)
             val rv = simplePresentation(context, display)
-            val inline = inlinePresentation(context, label, inlineSpec)
+            val inline = inlinePresentation(context, entry.title.ifBlank { "—" }, inlineSpec)
 
             val intent = Intent(context, AutofillSelectActivity::class.java)
                 .putExtra(AutofillSelectActivity.EXTRA_ENTRY_ID, entry.id)
                 .putExtra(AutofillSelectActivity.EXTRA_USERNAME_ID, parsed.usernameId)
                 .putExtra(AutofillSelectActivity.EXTRA_PASSWORD_ID, parsed.passwordId)
+                .putExtra(AutofillSelectActivity.EXTRA_CARD_NUMBER_ID, parsed.cardNumberId)
+                .putExtra(AutofillSelectActivity.EXTRA_CARD_CVV_ID, parsed.cardCvvId)
+                .putExtra(AutofillSelectActivity.EXTRA_CARD_EXPIRY_ID, parsed.cardExpiryId)
+                .putExtra(AutofillSelectActivity.EXTRA_CARD_HOLDER_ID, parsed.cardHolderId)
             val pending = PendingIntent.getActivity(
                 context, entry.id.hashCode(), intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
@@ -255,8 +277,13 @@ class PassVaultAutofillService : AutofillService() {
                     builder.setValue(id, null, rv)
                 }
             }
-            parsed.usernameId?.let { setPlaceholder(it) }
-            parsed.passwordId?.let { setPlaceholder(it) }
+            val ids = if (entry.type == EntryType.CARD) {
+                listOfNotNull(parsed.cardNumberId, parsed.cardCvvId, parsed.cardExpiryId, parsed.cardHolderId)
+            } else {
+                listOfNotNull(parsed.usernameId, parsed.passwordId)
+            }
+            if (ids.isEmpty()) return null
+            ids.forEach { setPlaceholder(it) }
             builder.setAuthentication(pending.intentSender)
             return builder.build()
         }
@@ -267,23 +294,32 @@ class PassVaultAutofillService : AutofillService() {
             parsed: ParsedStructure,
             inlineSpec: InlinePresentationSpec? = null,
         ): Dataset? {
-            if (!parsed.hasFields()) return null
+            if (!parsed.hasFields() && !parsed.hasCardFields()) return null
             val builder = Dataset.Builder()
-            val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
-            val display = if (entry.username.isBlank()) "🔑 $label" else "🔑 $label · ${entry.username}"
+            val display = entryLabel(context, entry)
             val rv = simplePresentation(context, display)
-            val inline = inlinePresentation(context, label, inlineSpec)
+            val inline = inlinePresentation(context, entry.title.ifBlank { "—" }, inlineSpec)
 
-            fun set(id: android.view.autofill.AutofillId, value: String) {
+            var filledAny = false
+            fun set(id: android.view.autofill.AutofillId?, value: String) {
+                if (id == null || value.isBlank()) return
+                filledAny = true
                 if (Build.VERSION.SDK_INT >= 30 && inline != null) {
                     builder.setValue(id, AutofillValue.forText(value), rv, inline)
                 } else {
                     builder.setValue(id, AutofillValue.forText(value), rv)
                 }
             }
-            parsed.usernameId?.let { set(it, entry.username) }
-            parsed.passwordId?.let { set(it, entry.password) }
-            return builder.build()
+            if (entry.type == EntryType.CARD) {
+                set(parsed.cardNumberId, (entry.extras["number"] ?: "").filter { it.isDigit() })
+                set(parsed.cardCvvId, entry.extras["cvv"] ?: "")
+                set(parsed.cardExpiryId, entry.extras["expiry"] ?: "")
+                set(parsed.cardHolderId, entry.extras["holder"] ?: "")
+            } else {
+                set(parsed.usernameId, entry.username)
+                set(parsed.passwordId, entry.password)
+            }
+            return if (filledAny) builder.build() else null
         }
     }
 }

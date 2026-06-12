@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,6 +47,7 @@ import com.passvault.app.R
 import com.passvault.app.data.VaultRepository
 import com.passvault.app.data.Vaults
 import com.passvault.app.security.BiometricHelper
+import com.passvault.app.security.Lockout
 import com.passvault.app.util.PasswordStrength
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -224,6 +226,22 @@ fun UnlockScreen(activity: FragmentActivity) {
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))
         }
+        var cooldownSeconds by remember { mutableIntStateOf(0) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                cooldownSeconds = (Lockout.remainingCooldownMs(context) / 1000).toInt()
+                kotlinx.coroutines.delay(500)
+            }
+        }
+        if (cooldownSeconds > 0) {
+            Text(
+                stringResource(R.string.unlock_cooldown, cooldownSeconds),
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
+        val wipedMsg = stringResource(R.string.unlock_wiped)
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = {
@@ -234,10 +252,20 @@ fun UnlockScreen(activity: FragmentActivity) {
                         VaultRepository.unlock(context, password.toCharArray())
                     }
                     working = false
-                    if (!ok) error = wrongPasswordMsg
+                    if (ok) {
+                        Lockout.reset(context)
+                    } else {
+                        val wiped = Lockout.recordFailure(context)
+                        if (wiped) {
+                            error = wipedMsg
+                            VaultRepository.vaultRevision.value++
+                        } else {
+                            error = wrongPasswordMsg
+                        }
+                    }
                 }
             },
-            enabled = !working && password.isNotEmpty(),
+            enabled = !working && password.isNotEmpty() && cooldownSeconds == 0,
             modifier = Modifier.fillMaxWidth(),
         ) {
             if (working) CircularProgressIndicator(Modifier.size(20.dp)) else Text(stringResource(R.string.unlock_button))

@@ -1,10 +1,20 @@
 package com.passvault.app.ui
 
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import androidx.fragment.app.FragmentActivity
 import com.passvault.app.R
 import com.passvault.app.data.Categories
 import com.passvault.app.data.EntryType
+
+/** Desenrolla el Context de Compose hasta la FragmentActivity contenedora. */
+tailrec fun Context.findFragmentActivity(): FragmentActivity? = when (this) {
+    is FragmentActivity -> this
+    is ContextWrapper -> baseContext.findFragmentActivity()
+    else -> null
+}
 
 @Composable
 fun categoryLabel(key: String): String = stringResource(

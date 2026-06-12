@@ -52,6 +52,41 @@ object CryptoManager {
         }
     }
 
+    /**
+     * Calibra Argon2id para que la derivación tarde ~1 segundo en este
+     * dispositivo: más coste en gama alta, sin castigar a la gama baja.
+     */
+    fun calibrateKdf(): KdfParams {
+        return try {
+            val trialMemKiB = 16 * 1024 // prueba con 16 MiB y 2 iteraciones
+            val trialIters = 2
+            val start = System.nanoTime()
+            Argon2Kt().hash(
+                mode = Argon2Mode.ARGON2_ID,
+                password = "calibracion".toByteArray(Charsets.UTF_8),
+                salt = randomSalt(),
+                tCostInIterations = trialIters,
+                mCostInKibibyte = trialMemKiB,
+                parallelism = ARGON2_PARALLELISM,
+                hashLengthInBytes = KEY_BYTES,
+            )
+            val trialMs = (System.nanoTime() - start) / 1_000_000.0
+            // El coste crece ≈ linealmente con memoria × iteraciones
+            val targetCost = (trialMemKiB.toLong() * trialIters * (1000.0 / trialMs.coerceAtLeast(1.0))).toLong()
+
+            var memKiB = ARGON2_MEM_KIB
+            var iterations = (targetCost / memKiB).toInt().coerceIn(2, 6)
+            if (targetCost < memKiB.toLong() * 2) {
+                // Dispositivo modesto: reduce memoria antes que bajar de 2 iteraciones
+                memKiB = (targetCost / 2).toInt().coerceIn(32 * 1024, ARGON2_MEM_KIB)
+                iterations = 2
+            }
+            KdfParams(VERSION_ARGON2, iterations, memKiB, ARGON2_PARALLELISM)
+        } catch (e: Exception) {
+            KdfParams.current()
+        }
+    }
+
     data class VaultHeader(
         val kdf: KdfParams,
         val salt: ByteArray,

@@ -1,0 +1,8 @@
+• Brute-force throttling and optional wipe after N failed attempts
+• Identity confirmation to reveal card data and export
+• Inactivity lock even while the app is on screen
+• Automatic Argon2 calibration per device
+• Credit card autofill in payment forms
+• Unencrypted CSV export (to migrate to another manager)
+• Quick Settings tile and two-pane layout on tablets
+• Cleaner interface and reproducible builds

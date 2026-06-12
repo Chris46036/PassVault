@@ -23,6 +23,9 @@ object VaultRepository {
     /** Cambia al observar la bóveda activa para que la UI se recomponga. */
     val vaultRevision = mutableStateOf(0)
 
+    /** Última interacción del usuario, para el bloqueo por inactividad. */
+    @Volatile var lastInteractionAt: Long = System.currentTimeMillis()
+
     /** Bloquea y cambia la bóveda activa. */
     fun switchVault(context: Context, vaultId: String) {
         lock()
@@ -53,7 +56,7 @@ object VaultRepository {
 
     fun create(context: Context, masterPassword: CharArray) {
         val s = CryptoManager.randomSalt()
-        val params = CryptoManager.KdfParams.current()
+        val params = CryptoManager.calibrateKdf()
         val k = CryptoManager.deriveKey(masterPassword, s, params)
         key = k
         salt = s

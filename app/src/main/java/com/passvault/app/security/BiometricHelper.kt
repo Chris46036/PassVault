@@ -151,6 +151,34 @@ object BiometricHelper {
         }, onFail = { onFail(it) })
     }
 
+    /**
+     * Confirmación de identidad para acciones sensibles (ver CVV, exportar…).
+     * Acepta biometría o el PIN/patrón del dispositivo; si no hay nada
+     * configurado, deja pasar (no se puede exigir lo que no existe).
+     */
+    fun confirmAction(activity: FragmentActivity, title: String, onConfirmed: () -> Unit) {
+        val authenticators = BiometricManager.Authenticators.BIOMETRIC_WEAK or
+            BiometricManager.Authenticators.DEVICE_CREDENTIAL
+        val available = BiometricManager.from(activity)
+            .canAuthenticate(authenticators) == BiometricManager.BIOMETRIC_SUCCESS
+        if (!available) {
+            onConfirmed()
+            return
+        }
+        val executor = ContextCompat.getMainExecutor(activity)
+        val prompt = BiometricPrompt(activity, executor, object : BiometricPrompt.AuthenticationCallback() {
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                onConfirmed()
+            }
+        })
+        val info = BiometricPrompt.PromptInfo.Builder()
+            .setTitle(title)
+            .setSubtitle(activity.getString(R.string.bio_subtitle))
+            .setAllowedAuthenticators(authenticators)
+            .build()
+        prompt.authenticate(info)
+    }
+
     private fun prompt(
         activity: FragmentActivity,
         title: String,

@@ -269,4 +269,17 @@
     <string name="widget_open">Abrir bóveda</string>
     <string name="widget_generator">Generador</string>
     <string name="shortcut_new">Nueva entrada</string>
+
+    <!-- v1.4.0 -->
+    <string name="items_count">%1$d elementos</string>
+    <string name="unlock_cooldown">Demasiados intentos fallidos. Espera %1$d s.</string>
+    <string name="unlock_wiped">La bóveda fue eliminada tras demasiados intentos fallidos.</string>
+    <string name="set_wipe">Borrar tras intentos fallidos</string>
+    <string name="wipe_after_n">Tras %1$d intentos</string>
+    <string name="confirm_reveal">Confirma tu identidad para ver este dato</string>
+    <string name="set_export_csv">Exportar CSV sin cifrar</string>
+    <string name="set_export_csv_sub">Para migrar a otro gestor. El archivo queda sin protección.</string>
+    <string name="export_csv_warn_title">¿Exportar sin cifrar?</string>
+    <string name="export_csv_warn_body">El archivo contendrá todas tus contraseñas en texto plano. Guárdalo solo el tiempo necesario y bórralo de forma segura después.</string>
+    <string name="export_csv_done">CSV exportado. ¡Recuerda borrarlo cuando termines!</string>
 </resources>

@@ -66,6 +66,9 @@ fun SettingsScreen(
     var showDisableBackup by remember { mutableStateOf(false) }
     var showNewVault by remember { mutableStateOf(false) }
     var showSwitchVault by remember { mutableStateOf(false) }
+    var showWipeDialog by remember { mutableStateOf(false) }
+    var wipeAfter by remember { mutableIntStateOf(com.passvault.app.security.Lockout.wipeAfterAttempts(context)) }
+    var showCsvWarning by remember { mutableStateOf(false) }
 
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 
@@ -110,6 +113,25 @@ fun SettingsScreen(
         val uri = result.data?.data
         if (result.resultCode == Activity.RESULT_OK && uri != null) {
             kdbxUri = uri
+        }
+    }
+
+    val exportCsvLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use {
+                    it.write(
+                        com.passvault.app.util.CsvExporter.export(VaultRepository.entries.toList())
+                            .toByteArray(Charsets.UTF_8)
+                    )
+                }
+                toast(context.getString(R.string.export_csv_done))
+            } catch (e: Exception) {
+                toast(context.getString(R.string.export_error, e.message ?: ""))
+            }
         }
     }
 
@@ -209,6 +231,12 @@ fun SettingsScreen(
                     stringResource(R.string.set_clipboard),
                     clipLabel(clipClear),
                 ) { showClipDialog = true }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_wipe),
+                    if (wipeAfter == 0) stringResource(R.string.never)
+                    else stringResource(R.string.wipe_after_n, wipeAfter),
+                ) { showWipeDialog = true }
                 HorizontalDivider()
                 SettingRow(
                     stringResource(R.string.set_change_master),
@@ -318,6 +346,11 @@ fun SettingsScreen(
                     }
                     exportLauncher.launch(intent)
                 }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_export_csv),
+                    stringResource(R.string.set_export_csv_sub),
+                ) { showCsvWarning = true }
                 HorizontalDivider()
                 SettingRow(
                     stringResource(R.string.set_import),
@@ -451,6 +484,49 @@ fun SettingsScreen(
                 BiometricHelper.disable(context)
                 bioEnabled = false
                 toast(changePwdDoneMsg)
+            },
+        )
+    }
+    if (showWipeDialog) {
+        OptionsDialog(
+            title = stringResource(R.string.set_wipe),
+            options = listOf(
+                0 to stringResource(R.string.never),
+                5 to stringResource(R.string.wipe_after_n, 5),
+                10 to stringResource(R.string.wipe_after_n, 10),
+                15 to stringResource(R.string.wipe_after_n, 15),
+            ),
+            selected = wipeAfter,
+            onSelect = {
+                wipeAfter = it
+                com.passvault.app.security.Lockout.setWipeAfterAttempts(context, it)
+                showWipeDialog = false
+            },
+            onDismiss = { showWipeDialog = false },
+        )
+    }
+    if (showCsvWarning) {
+        AlertDialog(
+            onDismissRequest = { showCsvWarning = false },
+            title = { Text(stringResource(R.string.export_csv_warn_title)) },
+            text = { Text(stringResource(R.string.export_csv_warn_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCsvWarning = false
+                    BiometricHelper.confirmAction(
+                        activity, context.getString(R.string.export_csv_warn_title)
+                    ) {
+                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "text/comma-separated-values"
+                            putExtra(Intent.EXTRA_TITLE, "passvault-export.csv")
+                        }
+                        exportCsvLauncher.launch(intent)
+                    }
+                }) { Text(stringResource(R.string.set_export_csv), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCsvWarning = false }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }
@@ -629,12 +705,18 @@ private fun OptionsDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column {
                 options.forEach { (value, label) ->
-                    Text(
-                        (if (value == selected) "●  " else "○  ") + label,
-                        modifier = Modifier.fillMaxWidth().clickable { onSelect(value) }.padding(8.dp),
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { onSelect(value) }.padding(vertical = 4.dp),
+                    ) {
+                        androidx.compose.material3.RadioButton(
+                            selected = value == selected,
+                            onClick = { onSelect(value) },
+                        )
+                        Text(label)
+                    }
                 }
             }
         },

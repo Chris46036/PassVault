@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
@@ -28,6 +29,11 @@ class MainActivity : FragmentActivity() {
     companion object {
         const val ACTION_GENERATOR = "com.passvault.app.action.GENERATOR"
         const val ACTION_NEW_ENTRY = "com.passvault.app.action.NEW_ENTRY"
+    }
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        VaultRepository.lastInteractionAt = System.currentTimeMillis()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,11 +73,26 @@ private fun Root(activity: FragmentActivity, startTab: Int = 0, startCreate: Boo
     }
 }
 
-/** Bloquea la bóveda cuando la app pasa a segundo plano más del tiempo configurado. */
+/**
+ * Bloquea la bóveda cuando la app pasa a segundo plano más del tiempo
+ * configurado, y también por inactividad aunque siga en pantalla.
+ */
 @Composable
 private fun AutoLockEffect() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(15_000)
+            val timeout = Settings.autoLockSeconds(context)
+            if (timeout > 0 && VaultRepository.isUnlocked() &&
+                System.currentTimeMillis() - VaultRepository.lastInteractionAt > timeout * 1000L
+            ) {
+                VaultRepository.lock()
+            }
+        }
+    }
     DisposableEffect(lifecycleOwner) {
         var hiddenAt = 0L
         val observer = LifecycleEventObserver { _, event ->
