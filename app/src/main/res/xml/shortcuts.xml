@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="generator"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/widget_generator">
+        <intent
+            android:action="com.passvault.app.action.GENERATOR"
+            android:targetPackage="com.passvault.app"
+            android:targetClass="com.passvault.app.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="new_entry"
+        android:enabled="true"
+        android:icon="@drawable/ic_launcher_foreground"
+        android:shortcutShortLabel="@string/shortcut_new">
+        <intent
+            android:action="com.passvault.app.action.NEW_ENTRY"
+            android:targetPackage="com.passvault.app"
+            android:targetClass="com.passvault.app.MainActivity" />
+    </shortcut>
+</shortcuts>

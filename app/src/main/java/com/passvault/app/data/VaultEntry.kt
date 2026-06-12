@@ -10,10 +10,20 @@ object EntryType {
     const val CARD = "card"
     const val NOTE = "note"
     const val IDENTITY = "identity"
+
+    /** Passkey WebAuthn; extras: rpId, credId, privateKey (PKCS8 b64url), userHandle, userName. */
+    const val PASSKEY = "passkey"
+
+    /** Tipos que el usuario puede crear a mano (las passkeys las crea el sistema). */
     val ALL = listOf(LOGIN, CARD, NOTE, IDENTITY)
 }
 
 data class PasswordHistoryItem(val password: String, val changedAt: Long)
+
+/** Archivo adjunto cifrado dentro de la bóveda (contenido en base64). */
+data class Attachment(val name: String, val dataB64: String) {
+    val sizeBytes: Int get() = dataB64.length / 4 * 3
+}
 
 data class VaultEntry(
     val id: String = UUID.randomUUID().toString(),
@@ -28,6 +38,8 @@ data class VaultEntry(
     val totpSecret: String = "",
     /** Campos según el tipo: tarjeta (number, holder, expiry, cvv), identidad (fullName, phone, address, document). */
     val extras: Map<String, String> = emptyMap(),
+    val tags: List<String> = emptyList(),
+    val attachments: List<Attachment> = emptyList(),
     val history: List<PasswordHistoryItem> = emptyList(),
     /** 0 = activa; >0 = en la papelera desde ese instante. */
     val deletedAt: Long = 0L,
@@ -49,6 +61,12 @@ data class VaultEntry(
         put("favorite", favorite)
         put("totpSecret", totpSecret)
         put("extras", JSONObject(extras as Map<*, *>))
+        put("tags", JSONArray(tags))
+        put("attachments", JSONArray().apply {
+            attachments.forEach {
+                put(JSONObject().put("n", it.name).put("d", it.dataB64))
+            }
+        })
         put("history", JSONArray().apply {
             history.forEach {
                 put(JSONObject().put("p", it.password).put("t", it.changedAt))
@@ -65,6 +83,19 @@ data class VaultEntry(
             val extrasObj = o.optJSONObject("extras")
             val extras = buildMap {
                 extrasObj?.keys()?.forEach { k -> put(k, extrasObj.optString(k)) }
+            }
+            val tagsArr = o.optJSONArray("tags")
+            val tags = buildList {
+                if (tagsArr != null) for (i in 0 until tagsArr.length()) add(tagsArr.getString(i))
+            }
+            val attachArr = o.optJSONArray("attachments")
+            val attachments = buildList {
+                if (attachArr != null) {
+                    for (i in 0 until attachArr.length()) {
+                        val a = attachArr.getJSONObject(i)
+                        add(Attachment(a.optString("n"), a.optString("d")))
+                    }
+                }
             }
             val historyArr = o.optJSONArray("history")
             val history = buildList {
@@ -87,6 +118,8 @@ data class VaultEntry(
                 favorite = o.optBoolean("favorite", false),
                 totpSecret = o.optString("totpSecret"),
                 extras = extras,
+                tags = tags,
+                attachments = attachments,
                 history = history,
                 deletedAt = o.optLong("deletedAt", 0L),
                 createdAt = o.optLong("createdAt", System.currentTimeMillis()),

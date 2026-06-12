@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
@@ -56,15 +57,19 @@ fun HomeScreen(
 ) {
     var query by remember { mutableStateOf("") }
     var categoryFilter by remember { mutableStateOf<String?>(null) }
+    var tagFilter by remember { mutableStateOf<String?>(null) }
     var onlyFavorites by remember { mutableStateOf(false) }
 
     val all = VaultRepository.entries.filter { !it.isDeleted }
+    val allTags = all.flatMap { it.tags }.distinct().sorted()
     val filtered = all.filter { e ->
         (query.isBlank() ||
             e.title.contains(query, true) ||
             e.username.contains(query, true) ||
-            e.url.contains(query, true)) &&
+            e.url.contains(query, true) ||
+            e.tags.any { it.contains(query, true) }) &&
             (categoryFilter == null || e.category == categoryFilter) &&
+            (tagFilter == null || tagFilter in e.tags) &&
             (!onlyFavorites || e.favorite)
     }.sortedWith(compareByDescending<VaultEntry> { it.favorite }.thenBy { it.title.lowercase() })
 
@@ -95,6 +100,13 @@ fun HomeScreen(
                         selected = categoryFilter == cat,
                         onClick = { categoryFilter = if (categoryFilter == cat) null else cat },
                         label = { Text(categoryLabel(cat)) },
+                    )
+                }
+                items(allTags) { tag ->
+                    FilterChip(
+                        selected = tagFilter == tag,
+                        onClick = { tagFilter = if (tagFilter == tag) null else tag },
+                        label = { Text("#$tag") },
                     )
                 }
             }
@@ -164,6 +176,11 @@ private fun EntryCard(entry: VaultEntry, onClick: () -> Unit) {
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(20.dp),
                         )
+                        EntryType.PASSKEY -> Icon(
+                            Icons.Filled.Key, null,
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(20.dp),
+                        )
                         else -> Text(
                             entry.title.take(1).uppercase().ifBlank { "?" },
                             style = MaterialTheme.typography.titleMedium,
@@ -185,6 +202,7 @@ private fun EntryCard(entry: VaultEntry, onClick: () -> Unit) {
                         EntryType.CARD -> maskCardNumber(entry.extras["number"] ?: "")
                         EntryType.IDENTITY -> entry.extras["fullName"] ?: ""
                         EntryType.NOTE -> typeLabel(entry.type)
+                        EntryType.PASSKEY -> typeLabel(entry.type) + " · " + entry.url
                         else -> entry.username.ifBlank { entry.url }
                     },
                     style = MaterialTheme.typography.bodySmall,

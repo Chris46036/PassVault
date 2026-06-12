@@ -1,0 +1,8 @@
+• System passkey provider (Android 14+)
+• KeePass (.kdbx) import
+• Encrypted file attachments
+• 2FA code auto-copied when autofilling
+• Auto-backup to a chosen folder
+• Multiple independent vaults and tags
+• Quick-access widget and app shortcuts
+• Material You (dynamic colors)

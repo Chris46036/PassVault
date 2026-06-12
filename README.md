@@ -10,18 +10,20 @@ Tus contraseñas se cifran en tu dispositivo y nunca salen de él. Sin cuentas, 
 
 ## ✨ Funciones
 
+- 🗝️ **Proveedor de passkeys** — crea e inicia sesión con passkeys (WebAuthn) guardadas en tu bóveda, integrado con el Credential Manager del sistema (Android 14+).
 - 🔒 **Cifrado fuerte** — AES-256-GCM con clave derivada por **Argon2id** (64 MiB, resistente a ataques con GPU), el mismo KDF que usan los gestores líderes. Las bóvedas antiguas con PBKDF2 se migran automáticamente.
 - 👆 **Desbloqueo biométrico** — huella digital respaldada por el Android Keystore; la clave protegida nunca sale del hardware seguro.
 - ✍️ **Autorrellenado completo** — rellena credenciales en apps y navegadores (con sugerencias dentro del teclado en Android 11+), **detecta credenciales nuevas y pregunta si guardarlas**, incluso con la bóveda bloqueada. Comparación **estricta de dominios** (anti-phishing): `facebook.malicioso.com` jamás recibirá tu contraseña de `facebook.com`.
-- 🔢 **Códigos 2FA (TOTP)** — escanea el **código QR** con la cámara o pega el secreto, y genera los códigos dentro de la app.
-- 🗂️ **Tipos de elemento** — cuentas, **tarjetas de crédito, notas seguras e identidades**, con categorías, favoritos y búsqueda.
+- 🔢 **Códigos 2FA (TOTP)** — escanea el **código QR** con la cámara o pega el secreto; al autorrellenar una cuenta con 2FA, **el código se copia solo** al portapapeles.
+- 🗂️ **Tipos de elemento** — cuentas, **tarjetas de crédito, notas seguras, identidades y archivos adjuntos cifrados**, con categorías, **etiquetas**, favoritos y búsqueda.
+- 🏦 **Varias bóvedas** — Personal, Trabajo… cada una independiente y con su propia contraseña maestra.
 - 🎲 **Generador** — contraseñas de 8 a 64 caracteres o frases de paso memorables, con medidor de fortaleza.
 - 🩺 **Auditoría de seguridad** — contraseñas débiles, reutilizadas, antiguas y filtradas (Have I Been Pwned con k-anonimato; tu contraseña jamás se envía).
-- 🕓 **Historial de contraseñas** — guarda las 10 anteriores de cada cuenta por si necesitas recuperar una.
-- 🗑️ **Papelera** — lo eliminado se puede restaurar durante 30 días.
-- 📥 **Importación CSV** — trae tus contraseñas desde Chrome, Bitwarden, LastPass y similares.
-- 💾 **Copias de seguridad** — exporta/importa la bóveda cifrada (`.pvlt`), más **2 respaldos locales rotativos automáticos** contra corrupción del archivo.
+- 🕓 **Historial de contraseñas** y 🗑️ **papelera** con recuperación durante 30 días.
+- 📥 **Importación** — KeePass (`.kdbx`), Chrome, Bitwarden, LastPass y similares (CSV).
+- 💾 **Copias de seguridad** — exporta/importa la bóveda cifrada (`.pvlt`), **auto-respaldo a la carpeta que elijas** (SD, carpeta de Drive…) y 2 respaldos locales rotativos contra corrupción.
 - ⏱️ **Auto-bloqueo**, 📋 limpieza automática del portapapeles y 🚫 bloqueo de capturas de pantalla.
+- 🎨 **Material You** (colores dinámicos en Android 12+), widget de acceso rápido y atajos de aplicación.
 - 🌍 **En español e inglés**, según el idioma del sistema. Compatible con **Android 7.0+** (~98% de los dispositivos).
 
 ## 📱 Instalación

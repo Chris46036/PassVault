@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -24,6 +25,11 @@ import com.passvault.app.ui.theme.PassVaultTheme
 
 class MainActivity : FragmentActivity() {
 
+    companion object {
+        const val ACTION_GENERATOR = "com.passvault.app.action.GENERATOR"
+        const val ACTION_NEW_ENTRY = "com.passvault.app.action.NEW_ENTRY"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Bloquea capturas de pantalla y vista previa en apps recientes
@@ -31,10 +37,12 @@ class MainActivity : FragmentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE
         )
+        val startTab = if (intent?.action == ACTION_GENERATOR) 1 else 0
+        val startCreate = intent?.action == ACTION_NEW_ENTRY
         setContent {
             PassVaultTheme {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Root(this)
+                    Root(this, startTab, startCreate)
                 }
             }
         }
@@ -42,16 +50,20 @@ class MainActivity : FragmentActivity() {
 }
 
 @Composable
-private fun Root(activity: FragmentActivity) {
+private fun Root(activity: FragmentActivity, startTab: Int = 0, startCreate: Boolean = false) {
     val context = LocalContext.current
     val unlocked by VaultRepository.unlocked
+    val revision by VaultRepository.vaultRevision
 
     AutoLockEffect()
 
-    when {
-        !VaultRepository.vaultExists(context) && !unlocked -> SetupScreen()
-        !unlocked -> UnlockScreen(activity)
-        else -> MainScreen(activity)
+    // El acceso a revision fuerza la recomposición al cambiar de bóveda
+    key(revision) {
+        when {
+            !VaultRepository.vaultExists(context) && !unlocked -> SetupScreen()
+            !unlocked -> UnlockScreen(activity)
+            else -> MainScreen(activity, startTab, startCreate)
+        }
     }
 }
 

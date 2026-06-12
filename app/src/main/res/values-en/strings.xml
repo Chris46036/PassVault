@@ -217,4 +217,39 @@
     <string name="save_prompt_body">The account for %1$s (%2$s) will be saved. Unlock your vault to confirm.</string>
     <string name="save_prompt_unlock_and_save">Unlock and save</string>
     <string name="save_prompt_saved">Credential saved to PassVault</string>
+
+    <!-- v1.3.0 -->
+    <string name="totp_copied">2FA code copied to clipboard</string>
+    <string name="type_passkey">Passkey</string>
+    <string name="passkey_created">Passkey saved to PassVault</string>
+    <string name="passkey_create_unlock">Unlock to create the passkey</string>
+    <string name="set_passkeys">Passkey provider</string>
+    <string name="set_passkeys_sub">Create and sign in with passkeys stored in your vault (Android 14+)</string>
+    <string name="set_import_kdbx">Import KeePass (.kdbx)</string>
+    <string name="set_import_kdbx_sub">Databases from KeePass, KeePassXC, KeePassDX…</string>
+    <string name="kdbx_password_title">Open KeePass database</string>
+    <string name="kdbx_password_body">Enter the master password of that .kdbx file.</string>
+    <string name="kdbx_invalid">Wrong password or invalid file</string>
+    <string name="set_autobackup">Auto-backup folder</string>
+    <string name="set_autobackup_off">Off: choose a folder (SD card, Drive folder…)</string>
+    <string name="set_autobackup_on">On: encrypted copy on every change, last 7 days</string>
+    <string name="autobackup_disable_q">Disable auto-backup?</string>
+    <string name="disable">Disable</string>
+    <string name="set_totp_autocopy">Copy 2FA when autofilling</string>
+    <string name="set_totp_autocopy_sub">Puts the code on the clipboard when filling an account with 2FA</string>
+    <string name="vaults_section">Vaults</string>
+    <string name="set_new_vault">Create new vault</string>
+    <string name="set_new_vault_sub">Independent, with its own master password (e.g. Work)</string>
+    <string name="new_vault_name">Vault name</string>
+    <string name="create">Create</string>
+    <string name="set_switch_vault">Switch vault</string>
+    <string name="vault_label">Vault: %1$s</string>
+    <string name="tags_label">Tags (comma separated)</string>
+    <string name="attachments_title">Attachments (%1$d)</string>
+    <string name="add_attachment">Add attachment</string>
+    <string name="attachment_too_big">File too large (max 4 MB)</string>
+    <string name="attachment_exported">Attachment exported</string>
+    <string name="widget_open">Open vault</string>
+    <string name="widget_generator">Generator</string>
+    <string name="shortcut_new">New item</string>
 </resources>

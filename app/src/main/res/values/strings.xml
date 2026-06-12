@@ -234,4 +234,39 @@
     <string name="save_prompt_body">Se guardará la cuenta de %1$s (%2$s). Desbloquea tu bóveda para confirmar.</string>
     <string name="save_prompt_unlock_and_save">Desbloquear y guardar</string>
     <string name="save_prompt_saved">Credencial guardada en PassVault</string>
+
+    <!-- v1.3.0 -->
+    <string name="totp_copied">Código 2FA copiado al portapapeles</string>
+    <string name="type_passkey">Passkey</string>
+    <string name="passkey_created">Passkey guardada en PassVault</string>
+    <string name="passkey_create_unlock">Desbloquea para crear la passkey</string>
+    <string name="set_passkeys">Proveedor de passkeys</string>
+    <string name="set_passkeys_sub">Crea e inicia sesión con passkeys guardadas en tu bóveda (Android 14+)</string>
+    <string name="set_import_kdbx">Importar KeePass (.kdbx)</string>
+    <string name="set_import_kdbx_sub">Bases de datos de KeePass, KeePassXC, KeePassDX…</string>
+    <string name="kdbx_password_title">Abrir base de datos KeePass</string>
+    <string name="kdbx_password_body">Introduce la contraseña maestra de ese archivo .kdbx.</string>
+    <string name="kdbx_invalid">Contraseña incorrecta o archivo no válido</string>
+    <string name="set_autobackup">Auto-respaldo a carpeta</string>
+    <string name="set_autobackup_off">Desactivado: elige una carpeta (SD, carpeta de Drive…)</string>
+    <string name="set_autobackup_on">Activado: copia cifrada en cada cambio, últimos 7 días</string>
+    <string name="autobackup_disable_q">¿Desactivar el auto-respaldo?</string>
+    <string name="disable">Desactivar</string>
+    <string name="set_totp_autocopy">Copiar 2FA al autorrellenar</string>
+    <string name="set_totp_autocopy_sub">Pone el código en el portapapeles al rellenar una cuenta con 2FA</string>
+    <string name="vaults_section">Bóvedas</string>
+    <string name="set_new_vault">Crear bóveda nueva</string>
+    <string name="set_new_vault_sub">Independiente y con su propia contraseña maestra (p. ej. Trabajo)</string>
+    <string name="new_vault_name">Nombre de la bóveda</string>
+    <string name="create">Crear</string>
+    <string name="set_switch_vault">Cambiar de bóveda</string>
+    <string name="vault_label">Bóveda: %1$s</string>
+    <string name="tags_label">Etiquetas (separadas por comas)</string>
+    <string name="attachments_title">Adjuntos (%1$d)</string>
+    <string name="add_attachment">Añadir adjunto</string>
+    <string name="attachment_too_big">Archivo demasiado grande (máx. 4 MB)</string>
+    <string name="attachment_exported">Adjunto exportado</string>
+    <string name="widget_open">Abrir bóveda</string>
+    <string name="widget_generator">Generador</string>
+    <string name="shortcut_new">Nueva entrada</string>
 </resources>

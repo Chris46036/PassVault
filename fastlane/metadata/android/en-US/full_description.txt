@@ -1,0 +1,15 @@
+PassVault is a zero-knowledge password manager: everything is encrypted on your device with AES-256-GCM and an Argon2id-derived key. No accounts, no servers, no telemetry.
+
+Features:
+
+• System passkey provider (Android 14+)
+• Autofill for apps and browsers with strict domain matching (anti-phishing) and saving of new credentials
+• 2FA codes (TOTP) with QR scanning, auto-copied when autofilling
+• Password and passphrase generator with strength meter
+• Audit: weak, reused, old and breached passwords (Have I Been Pwned with k-anonymity)
+• Cards, secure notes, identities and encrypted file attachments
+• Multiple independent vaults, categories, tags and favorites
+• Import from KeePass (.kdbx), Chrome, Bitwarden and LastPass (CSV)
+• Encrypted backups, auto-backup to a folder and rotating local backups
+• Biometric unlock, auto-lock, clipboard clearing and screenshot blocking
+• Password history and a trash with 30-day recovery

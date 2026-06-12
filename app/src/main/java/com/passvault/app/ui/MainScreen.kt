@@ -28,11 +28,11 @@ import com.passvault.app.data.VaultEntry
 private data class Tab(val titleRes: Int, val icon: ImageVector)
 
 @Composable
-fun MainScreen(activity: FragmentActivity) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+fun MainScreen(activity: FragmentActivity, startTab: Int = 0, startCreate: Boolean = false) {
+    var selectedTab by remember { mutableIntStateOf(startTab) }
     var viewingEntry by remember { mutableStateOf<VaultEntry?>(null) }
     var editingEntry by remember { mutableStateOf<VaultEntry?>(null) }
-    var creating by remember { mutableStateOf(false) }
+    var creating by remember { mutableStateOf(startCreate) }
     var showingTrash by remember { mutableStateOf(false) }
 
     val tabs = listOf(

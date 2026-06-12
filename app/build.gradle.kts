@@ -19,8 +19,8 @@ android {
         applicationId = "com.passvault.app"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "1.2.0"
+        versionCode = 4
+        versionName = "1.3.0"
     }
 
     signingConfigs {
@@ -70,10 +70,15 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.autofill:autofill:1.1.0")
-    // KDF resistente a GPU para la clave maestra
-    implementation("org.signal:argon2:13.1")
+    implementation("androidx.documentfile:documentfile:1.0.1")
+    // KDF resistente a GPU para la clave maestra (MIT, compatible con F-Droid)
+    implementation("com.lambdapioneer.argon2kt:argon2kt:1.5.0")
     // Escaneo de códigos QR para secretos TOTP
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    // Proveedor de passkeys (Credential Manager)
+    implementation("androidx.credentials:credentials:1.3.0")
+    // Lectura de bases de datos KeePass (.kdbx)
+    implementation("app.keemobile:kotpass:0.10.0")
 
     testImplementation("junit:junit:4.13.2")
 }

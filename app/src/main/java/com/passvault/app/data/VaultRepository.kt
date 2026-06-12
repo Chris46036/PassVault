@@ -15,11 +15,20 @@ import javax.crypto.spec.SecretKeySpec
  */
 object VaultRepository {
 
-    private const val VAULT_FILE = "vault.enc"
     private const val TRASH_RETENTION_MS = 30L * 86_400_000L // 30 días
 
     val entries = mutableStateListOf<VaultEntry>()
     val unlocked = mutableStateOf(false)
+
+    /** Cambia al observar la bóveda activa para que la UI se recomponga. */
+    val vaultRevision = mutableStateOf(0)
+
+    /** Bloquea y cambia la bóveda activa. */
+    fun switchVault(context: Context, vaultId: String) {
+        lock()
+        Vaults.setActive(context, vaultId)
+        vaultRevision.value++
+    }
 
     @Volatile private var key: SecretKey? = null
     @Volatile private var salt: ByteArray? = null
@@ -33,10 +42,11 @@ object VaultRepository {
     /** Entradas en la papelera. */
     fun trashedEntries(): List<VaultEntry> = entries.filter { it.isDeleted }
 
-    private fun vaultFile(context: Context) = File(context.filesDir, VAULT_FILE)
+    private fun fileName(context: Context) = Vaults.fileName(Vaults.activeId(context))
+    private fun vaultFile(context: Context) = File(context.filesDir, fileName(context))
     private fun backupFiles(context: Context) = listOf(
-        File(context.filesDir, "$VAULT_FILE.bak1"),
-        File(context.filesDir, "$VAULT_FILE.bak2"),
+        File(context.filesDir, "${fileName(context)}.bak1"),
+        File(context.filesDir, "${fileName(context)}.bak2"),
     )
 
     fun vaultExists(context: Context): Boolean = vaultFile(context).exists()
@@ -155,10 +165,11 @@ object VaultRepository {
             if (bak1.exists()) bak1.copyTo(bak2, overwrite = true)
             f.copyTo(bak1, overwrite = true)
         }
-        val tmp = File(f.parentFile, "$VAULT_FILE.tmp")
+        val tmp = File(f.parentFile, "${fileName(context)}.tmp")
         tmp.writeBytes(sealed)
         if (f.exists()) f.delete()
         tmp.renameTo(f)
+        AutoBackup.onVaultSaved(context, sealed)
     }
 
     fun addEntry(context: Context, entry: VaultEntry) {

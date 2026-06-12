@@ -1,9 +1,7 @@
 package com.passvault.app.crypto
 
-import org.signal.argon2.Argon2
-import org.signal.argon2.MemoryCost
-import org.signal.argon2.Type
-import org.signal.argon2.Version
+import com.lambdapioneer.argon2kt.Argon2Kt
+import com.lambdapioneer.argon2kt.Argon2Mode
 import java.nio.ByteBuffer
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -64,14 +62,15 @@ object CryptoManager {
     fun deriveKey(password: CharArray, salt: ByteArray, kdf: KdfParams): SecretKey {
         val keyBytes = when (kdf.version) {
             VERSION_ARGON2 -> {
-                val argon2 = Argon2.Builder(Version.V13)
-                    .type(Type.Argon2id)
-                    .memoryCost(MemoryCost.KiB(kdf.memKiB))
-                    .iterations(kdf.iterations)
-                    .parallelism(kdf.parallelism)
-                    .hashLength(KEY_BYTES)
-                    .build()
-                argon2.hash(String(password).toByteArray(Charsets.UTF_8), salt).hash
+                Argon2Kt().hash(
+                    mode = Argon2Mode.ARGON2_ID,
+                    password = String(password).toByteArray(Charsets.UTF_8),
+                    salt = salt,
+                    tCostInIterations = kdf.iterations,
+                    mCostInKibibyte = kdf.memKiB,
+                    parallelism = kdf.parallelism,
+                    hashLengthInBytes = KEY_BYTES,
+                ).rawHashAsByteArray()
             }
             VERSION_PBKDF2 -> {
                 val spec = PBEKeySpec(password, salt, kdf.iterations, KEY_BYTES * 8)

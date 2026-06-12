@@ -70,7 +70,7 @@ class PassVaultAutofillService : AutofillService() {
         val builder = FillResponse.Builder()
         var hasContent = false
         matches.forEachIndexed { i, entry ->
-            val dataset = buildDataset(
+            val dataset = buildStubDataset(
                 this, entry, parsed, inlineSpecs.getOrNull(i)
             ) ?: return@forEachIndexed
             builder.addDataset(dataset)
@@ -220,6 +220,45 @@ class PassVaultAutofillService : AutofillService() {
             } catch (e: Exception) {
                 null
             }
+        }
+
+        /**
+         * Dataset autenticado "hueco": al elegirlo se lanza AutofillSelectActivity,
+         * que devuelve las credenciales reales y copia el código 2FA si lo hay.
+         */
+        fun buildStubDataset(
+            context: Context,
+            entry: VaultEntry,
+            parsed: ParsedStructure,
+            inlineSpec: InlinePresentationSpec? = null,
+        ): Dataset? {
+            if (!parsed.hasFields()) return null
+            val builder = Dataset.Builder()
+            val label = entry.title.ifBlank { entry.username.ifBlank { "—" } }
+            val display = if (entry.username.isBlank()) "🔑 $label" else "🔑 $label · ${entry.username}"
+            val rv = simplePresentation(context, display)
+            val inline = inlinePresentation(context, label, inlineSpec)
+
+            val intent = Intent(context, AutofillSelectActivity::class.java)
+                .putExtra(AutofillSelectActivity.EXTRA_ENTRY_ID, entry.id)
+                .putExtra(AutofillSelectActivity.EXTRA_USERNAME_ID, parsed.usernameId)
+                .putExtra(AutofillSelectActivity.EXTRA_PASSWORD_ID, parsed.passwordId)
+            val pending = PendingIntent.getActivity(
+                context, entry.id.hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            )
+
+            fun setPlaceholder(id: android.view.autofill.AutofillId) {
+                if (Build.VERSION.SDK_INT >= 30 && inline != null) {
+                    builder.setValue(id, null, rv, inline)
+                } else {
+                    builder.setValue(id, null, rv)
+                }
+            }
+            parsed.usernameId?.let { setPlaceholder(it) }
+            parsed.passwordId?.let { setPlaceholder(it) }
+            builder.setAuthentication(pending.intentSender)
+            return builder.build()
         }
 
         fun buildDataset(

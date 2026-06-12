@@ -11,6 +11,7 @@ import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.passvault.app.R
+import com.passvault.app.data.Vaults
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -23,10 +24,24 @@ import javax.crypto.spec.GCMParameterSpec
  */
 object BiometricHelper {
 
-    private const val KEYSTORE_ALIAS = "passvault_biometric_key"
     private const val PREFS = "biometric_prefs"
-    private const val PREF_CT = "wrapped_key_ct"
-    private const val PREF_IV = "wrapped_key_iv"
+
+    // Claves y blobs por bóveda; la bóveda "default" usa los nombres antiguos
+    // para no invalidar la biometría de quien ya la tenía activada.
+    private fun alias(context: Context): String {
+        val id = Vaults.activeId(context)
+        return if (id == Vaults.DEFAULT_ID) "passvault_biometric_key" else "passvault_biometric_key_$id"
+    }
+
+    private fun prefCt(context: Context): String {
+        val id = Vaults.activeId(context)
+        return if (id == Vaults.DEFAULT_ID) "wrapped_key_ct" else "wrapped_key_ct_$id"
+    }
+
+    private fun prefIv(context: Context): String {
+        val id = Vaults.activeId(context)
+        return if (id == Vaults.DEFAULT_ID) "wrapped_key_iv" else "wrapped_key_iv_$id"
+    }
 
     fun canUseBiometric(context: Context): Boolean =
         BiometricManager.from(context)
@@ -34,22 +49,23 @@ object BiometricHelper {
             BiometricManager.BIOMETRIC_SUCCESS
 
     fun isEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(PREF_CT)
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).contains(prefCt(context))
 
     fun disable(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply()
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .remove(prefCt(context)).remove(prefIv(context)).apply()
         try {
             val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-            ks.deleteEntry(KEYSTORE_ALIAS)
+            ks.deleteEntry(alias(context))
         } catch (_: Exception) {
         }
     }
 
-    private fun getOrCreateKeystoreKey(): SecretKey {
+    private fun getOrCreateKeystoreKey(context: Context): SecretKey {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (ks.getKey(KEYSTORE_ALIAS, null) as? SecretKey)?.let { return it }
+        (ks.getKey(alias(context), null) as? SecretKey)?.let { return it }
         val builder = KeyGenParameterSpec.Builder(
-            KEYSTORE_ALIAS,
+            alias(context),
             KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
         )
             .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
@@ -77,7 +93,7 @@ object BiometricHelper {
         val cipher: Cipher
         try {
             cipher = Cipher.getInstance("AES/GCM/NoPadding")
-            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKeystoreKey())
+            cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKeystoreKey(activity))
         } catch (e: Exception) {
             disable(activity)
             onDone(false)
@@ -87,8 +103,8 @@ object BiometricHelper {
             try {
                 val ct = c.doFinal(masterKeyBytes)
                 activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .putString(PREF_CT, Base64.encodeToString(ct, Base64.NO_WRAP))
-                    .putString(PREF_IV, Base64.encodeToString(c.iv, Base64.NO_WRAP))
+                    .putString(prefCt(activity), Base64.encodeToString(ct, Base64.NO_WRAP))
+                    .putString(prefIv(activity), Base64.encodeToString(c.iv, Base64.NO_WRAP))
                     .apply()
                 onDone(true)
             } catch (e: Exception) {
@@ -104,8 +120,8 @@ object BiometricHelper {
         onFail: (String) -> Unit,
     ) {
         val prefs = activity.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val ct = prefs.getString(PREF_CT, null)
-        val iv = prefs.getString(PREF_IV, null)
+        val ct = prefs.getString(prefCt(activity), null)
+        val iv = prefs.getString(prefIv(activity), null)
         if (ct == null || iv == null) {
             onFail(activity.getString(R.string.bio_not_configured))
             return
@@ -115,7 +131,7 @@ object BiometricHelper {
             cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(
                 Cipher.DECRYPT_MODE,
-                getOrCreateKeystoreKey(),
+                getOrCreateKeystoreKey(activity),
                 GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP))
             )
         } catch (e: KeyPermanentlyInvalidatedException) {

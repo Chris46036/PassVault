@@ -1,0 +1,1 @@
+Fully local password manager: Argon2id, passkeys, 2FA, autofill and auditing

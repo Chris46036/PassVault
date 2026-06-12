@@ -1,0 +1,8 @@
+• Proveedor de passkeys del sistema (Android 14+)
+• Importación de KeePass (.kdbx)
+• Archivos adjuntos cifrados
+• Copia automática del código 2FA al autorrellenar
+• Auto-respaldo a una carpeta elegida
+• Varias bóvedas independientes y etiquetas
+• Widget de acceso rápido y atajos de aplicación
+• Material You (colores dinámicos)

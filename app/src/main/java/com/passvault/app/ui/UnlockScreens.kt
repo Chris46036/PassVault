@@ -2,6 +2,7 @@ package com.passvault.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -42,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import com.passvault.app.R
 import com.passvault.app.data.VaultRepository
+import com.passvault.app.data.Vaults
 import com.passvault.app.security.BiometricHelper
 import com.passvault.app.util.PasswordStrength
 import kotlinx.coroutines.Dispatchers
@@ -197,6 +200,26 @@ fun UnlockScreen(activity: FragmentActivity) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 12.dp),
         )
+        val vaults = remember { Vaults.list(context) }
+        if (vaults.size > 1) {
+            val activeId = remember { Vaults.activeId(context) }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(bottom = 12.dp),
+            ) {
+                vaults.forEach { vault ->
+                    FilterChip(
+                        selected = vault.id == activeId,
+                        onClick = {
+                            if (vault.id != activeId) {
+                                VaultRepository.switchVault(context, vault.id)
+                            }
+                        },
+                        label = { Text(vault.name) },
+                    )
+                }
+            }
+        }
         PasswordField(password, { password = it; error = null }, stringResource(R.string.master_password), isError = error != null, modifier = Modifier.fillMaxWidth())
         error?.let {
             Text(it, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 8.dp))

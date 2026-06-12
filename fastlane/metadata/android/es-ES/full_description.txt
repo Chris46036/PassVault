@@ -1,0 +1,15 @@
+PassVault es un gestor de contraseñas de conocimiento cero: todo se cifra en tu dispositivo con AES-256-GCM y una clave derivada por Argon2id. Sin cuentas, sin servidores, sin telemetría.
+
+Funciones:
+
+• Proveedor de passkeys del sistema (Android 14+)
+• Autorrellenado en apps y navegadores con comparación estricta de dominios (anti-phishing) y guardado de credenciales nuevas
+• Códigos 2FA (TOTP) con escaneo de QR, y copia automática al autorrellenar
+• Generador de contraseñas y frases de paso con medidor de fortaleza
+• Auditoría: contraseñas débiles, reutilizadas, antiguas y filtradas (Have I Been Pwned con k-anonimato)
+• Tarjetas, notas seguras, identidades y archivos adjuntos cifrados
+• Varias bóvedas independientes, categorías, etiquetas y favoritos
+• Importación desde KeePass (.kdbx), Chrome, Bitwarden y LastPass (CSV)
+• Copias de seguridad cifradas, auto-respaldo a una carpeta y respaldos locales rotativos
+• Desbloqueo biométrico, auto-bloqueo, limpieza del portapapeles y bloqueo de capturas
+• Historial de contraseñas y papelera con recuperación de 30 días

@@ -25,6 +25,7 @@ fun typeLabel(key: String): String = stringResource(
         EntryType.CARD -> R.string.type_card
         EntryType.NOTE -> R.string.type_note
         EntryType.IDENTITY -> R.string.type_identity
+        EntryType.PASSKEY -> R.string.type_passkey
         else -> R.string.type_login
     }
 )

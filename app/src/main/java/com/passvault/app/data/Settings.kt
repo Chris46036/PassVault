@@ -24,4 +24,22 @@ object Settings {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putInt(KEY_CLIPBOARD, seconds).apply()
     }
+
+    /** URI (árbol SAF) de la carpeta de auto-respaldo, o null si está desactivado. */
+    fun autoBackupUri(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("autobackup_uri", null)
+
+    fun setAutoBackupUri(context: Context, uri: String?) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString("autobackup_uri", uri).apply()
+    }
+
+    /** Copiar el código 2FA al portapapeles al autorrellenar (activado por defecto). */
+    fun totpAutoCopy(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean("totp_autocopy", true)
+
+    fun setTotpAutoCopy(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("totp_autocopy", enabled).apply()
+    }
 }

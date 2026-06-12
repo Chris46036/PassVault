@@ -114,7 +114,7 @@ class AutofillAuthActivity : FragmentActivity() {
         }
         val builder = FillResponse.Builder()
         matches.forEach { entry ->
-            PassVaultAutofillService.buildDataset(this, entry, parsed)?.let { builder.addDataset(it) }
+            PassVaultAutofillService.buildStubDataset(this, entry, parsed)?.let { builder.addDataset(it) }
         }
         val reply = Intent().putExtra(AutofillManager.EXTRA_AUTHENTICATION_RESULT, builder.build())
         setResult(RESULT_OK, reply)

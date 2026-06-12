@@ -60,6 +60,12 @@ fun SettingsScreen(
     var showClipDialog by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
     var importPasswordUri by remember { mutableStateOf<Uri?>(null) }
+    var kdbxUri by remember { mutableStateOf<Uri?>(null) }
+    var totpCopy by remember { mutableStateOf(Settings.totpAutoCopy(context)) }
+    var autoBackup by remember { mutableStateOf(Settings.autoBackupUri(context)) }
+    var showDisableBackup by remember { mutableStateOf(false) }
+    var showNewVault by remember { mutableStateOf(false) }
+    var showSwitchVault by remember { mutableStateOf(false) }
 
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
 
@@ -95,6 +101,32 @@ fun SettingsScreen(
         val uri = result.data?.data
         if (result.resultCode == Activity.RESULT_OK && uri != null) {
             importPasswordUri = uri
+        }
+    }
+
+    val kdbxLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            kdbxUri = uri
+        }
+    }
+
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == Activity.RESULT_OK && uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                Settings.setAutoBackupUri(context, uri.toString())
+                autoBackup = uri.toString()
+            } catch (_: Exception) {
+            }
         }
     }
 
@@ -193,21 +225,81 @@ fun SettingsScreen(
         if (Build.VERSION.SDK_INT >= 26) {
             SectionTitle(stringResource(R.string.autofill_section))
             Card(Modifier.fillMaxWidth()) {
-                val afm = remember { context.getSystemService(AutofillManager::class.java) }
-                val isService = afm?.hasEnabledAutofillServices() == true
-                SettingRow(
-                    stringResource(if (isService) R.string.set_autofill_active else R.string.set_autofill),
-                    stringResource(R.string.set_autofill_sub),
-                ) {
-                    try {
-                        val intent = Intent(AndroidSettings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
-                            data = Uri.parse("package:${context.packageName}")
+                Column {
+                    val afm = remember { context.getSystemService(AutofillManager::class.java) }
+                    val isService = afm?.hasEnabledAutofillServices() == true
+                    SettingRow(
+                        stringResource(if (isService) R.string.set_autofill_active else R.string.set_autofill),
+                        stringResource(R.string.set_autofill_sub),
+                    ) {
+                        try {
+                            val intent = Intent(AndroidSettings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                                data = Uri.parse("package:${context.packageName}")
+                            }
+                            activity.startActivity(intent)
+                        } catch (e: Exception) {
+                            toast(autofillErrorMsg)
                         }
-                        activity.startActivity(intent)
-                    } catch (e: Exception) {
-                        toast(autofillErrorMsg)
+                    }
+                    HorizontalDivider()
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(stringResource(R.string.set_totp_autocopy))
+                            Text(
+                                stringResource(R.string.set_totp_autocopy_sub),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = totpCopy,
+                            onCheckedChange = {
+                                totpCopy = it
+                                Settings.setTotpAutoCopy(context, it)
+                            },
+                        )
+                    }
+                    if (Build.VERSION.SDK_INT >= 34) {
+                        HorizontalDivider()
+                        SettingRow(
+                            stringResource(R.string.set_passkeys),
+                            stringResource(R.string.set_passkeys_sub),
+                        ) {
+                            try {
+                                val intent = Intent(AndroidSettings.ACTION_CREDENTIAL_PROVIDER).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                }
+                                activity.startActivity(intent)
+                            } catch (e: Exception) {
+                                toast(autofillErrorMsg)
+                            }
+                        }
                     }
                 }
+            }
+        }
+
+        SectionTitle(stringResource(R.string.vaults_section))
+        Card(Modifier.fillMaxWidth()) {
+            Column {
+                val vaults = com.passvault.app.data.Vaults.list(context)
+                val activeName = vaults.firstOrNull {
+                    it.id == com.passvault.app.data.Vaults.activeId(context)
+                }?.name ?: "Personal"
+                if (vaults.size > 1) {
+                    SettingRow(
+                        stringResource(R.string.set_switch_vault),
+                        stringResource(R.string.vault_label, activeName),
+                    ) { showSwitchVault = true }
+                    HorizontalDivider()
+                }
+                SettingRow(
+                    stringResource(R.string.set_new_vault),
+                    stringResource(R.string.set_new_vault_sub),
+                ) { showNewVault = true }
             }
         }
 
@@ -247,6 +339,28 @@ fun SettingsScreen(
                         type = "*/*"
                     }
                     importCsvLauncher.launch(intent)
+                }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_import_kdbx),
+                    stringResource(R.string.set_import_kdbx_sub),
+                ) {
+                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "*/*"
+                    }
+                    kdbxLauncher.launch(intent)
+                }
+                HorizontalDivider()
+                SettingRow(
+                    stringResource(R.string.set_autobackup),
+                    stringResource(if (autoBackup == null) R.string.set_autobackup_off else R.string.set_autobackup_on),
+                ) {
+                    if (autoBackup == null) {
+                        backupFolderLauncher.launch(Intent(Intent.ACTION_OPEN_DOCUMENT_TREE))
+                    } else {
+                        showDisableBackup = true
+                    }
                 }
                 HorizontalDivider()
                 SettingRow(
@@ -337,6 +451,110 @@ fun SettingsScreen(
                 BiometricHelper.disable(context)
                 bioEnabled = false
                 toast(changePwdDoneMsg)
+            },
+        )
+    }
+    if (showDisableBackup) {
+        AlertDialog(
+            onDismissRequest = { showDisableBackup = false },
+            title = { Text(stringResource(R.string.autobackup_disable_q)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    Settings.setAutoBackupUri(context, null)
+                    autoBackup = null
+                    showDisableBackup = false
+                }) { Text(stringResource(R.string.disable), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDisableBackup = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+    if (showNewVault) {
+        var name by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showNewVault = false },
+            title = { Text(stringResource(R.string.set_new_vault)) },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = name, onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.new_vault_name)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (name.isNotBlank()) {
+                        val info = com.passvault.app.data.Vaults.add(context, name.trim())
+                        showNewVault = false
+                        VaultRepository.switchVault(context, info.id)
+                    }
+                }) { Text(stringResource(R.string.create)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewVault = false }) { Text(stringResource(R.string.cancel)) }
+            },
+        )
+    }
+    if (showSwitchVault) {
+        val vaults = com.passvault.app.data.Vaults.list(context)
+        val activeId = com.passvault.app.data.Vaults.activeId(context)
+        AlertDialog(
+            onDismissRequest = { showSwitchVault = false },
+            title = { Text(stringResource(R.string.set_switch_vault)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    vaults.forEach { vault ->
+                        Text(
+                            (if (vault.id == activeId) "●  " else "○  ") + vault.name,
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                showSwitchVault = false
+                                if (vault.id != activeId) {
+                                    VaultRepository.switchVault(context, vault.id)
+                                }
+                            }.padding(8.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showSwitchVault = false }) { Text(stringResource(R.string.close)) }
+            },
+        )
+    }
+    kdbxUri?.let { uri ->
+        var kdbxPassword by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { kdbxUri = null },
+            title = { Text(stringResource(R.string.kdbx_password_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(stringResource(R.string.kdbx_password_body))
+                    PasswordField(kdbxPassword, { kdbxPassword = it }, stringResource(R.string.master_password), modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    try {
+                        val entries = context.contentResolver.openInputStream(uri)?.use {
+                            com.passvault.app.util.KdbxImporter.import(it, kdbxPassword)
+                        }
+                        if (entries == null) {
+                            toast(context.getString(R.string.kdbx_invalid))
+                        } else {
+                            val added = VaultRepository.addAllNew(context, entries)
+                            toast(context.getString(R.string.import_done, added))
+                        }
+                    } catch (e: Exception) {
+                        toast(context.getString(R.string.kdbx_invalid))
+                    }
+                    kdbxUri = null
+                }) { Text(stringResource(R.string.import_button)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { kdbxUri = null }) { Text(stringResource(R.string.cancel)) }
             },
         )
     }

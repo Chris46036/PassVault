@@ -20,7 +20,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -135,7 +137,25 @@ fun EntryDetailScreen(
                 EntryType.CARD -> CardDetail(live, showPassword, { showPassword = it }, ::copy)
                 EntryType.IDENTITY -> IdentityDetail(live, ::copy)
                 EntryType.NOTE -> {}
+                EntryType.PASSKEY -> {
+                    if (live.username.isNotBlank()) {
+                        DetailField(stringResource(R.string.field_username), live.username, onCopy = null)
+                    }
+                    DetailField(stringResource(R.string.field_website), live.url, onCopy = null)
+                    DetailField(typeLabel(live.type), live.extras["userDisplayName"] ?: "", onCopy = null)
+                }
                 else -> LoginDetail(live, showPassword, { showPassword = it }, ::copy)
+            }
+
+            if (live.attachments.isNotEmpty()) {
+                AttachmentsCard(live)
+            }
+            if (live.tags.isNotEmpty()) {
+                Text(
+                    live.tags.joinToString("  ") { "#$it" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
 
             if (live.notes.isNotBlank()) {
@@ -325,6 +345,65 @@ private fun IdentityDetail(live: VaultEntry, copy: (String, String) -> Unit) {
     }
 }
 
+/** Lista de adjuntos cifrados con exportación vía SAF. */
+@Composable
+private fun AttachmentsCard(entry: com.passvault.app.data.VaultEntry) {
+    val context = LocalContext.current
+    var exporting by remember { mutableStateOf<com.passvault.app.data.Attachment?>(null) }
+    val exportedMsg = stringResource(R.string.attachment_exported)
+    val exportLauncher = rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        val att = exporting
+        if (result.resultCode == android.app.Activity.RESULT_OK && uri != null && att != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use {
+                    it.write(android.util.Base64.decode(att.dataB64, android.util.Base64.NO_WRAP))
+                }
+                Toast.makeText(context, exportedMsg, Toast.LENGTH_SHORT).show()
+            } catch (_: Exception) {
+            }
+        }
+        exporting = null
+    }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                stringResource(R.string.attachments_title, entry.attachments.size),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            entry.attachments.forEach { att ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.AttachFile, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(att.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            "%.1f KB".format(att.sizeBytes / 1024f),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    TextButton(onClick = {
+                        exporting = att
+                        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "application/octet-stream"
+                            putExtra(Intent.EXTRA_TITLE, att.name)
+                        }
+                        exportLauncher.launch(intent)
+                    }) { Text(stringResource(R.string.save)) }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun DetailField(
     label: String,
@@ -418,6 +497,8 @@ fun EntryEditScreen(
     var idDocument by remember { mutableStateOf(entry?.extras?.get("document") ?: "") }
     var idPhone by remember { mutableStateOf(entry?.extras?.get("phone") ?: "") }
     var idAddress by remember { mutableStateOf(entry?.extras?.get("address") ?: "") }
+    var tagsText by remember { mutableStateOf(entry?.tags?.joinToString(", ") ?: "") }
+    var attachments by remember { mutableStateOf(entry?.attachments ?: emptyList()) }
     var showPassword by remember { mutableStateOf(entry == null) }
     var showGenerator by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -436,6 +517,31 @@ fun EntryEditScreen(
         }
     }
     val scanPrompt = stringResource(R.string.scan_qr_prompt)
+
+    val tooBigMsg = stringResource(R.string.attachment_too_big)
+    val attachLauncher = rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && uri != null) {
+            try {
+                val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                if (bytes == null || bytes.size > 4 * 1024 * 1024) {
+                    Toast.makeText(context, tooBigMsg, Toast.LENGTH_LONG).show()
+                } else {
+                    var name = "adjunto"
+                    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val idx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (cursor.moveToFirst() && idx >= 0) name = cursor.getString(idx)
+                    }
+                    attachments = attachments + com.passvault.app.data.Attachment(
+                        name, android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    )
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -530,6 +636,7 @@ fun EntryEditScreen(
                     )
                 }
                 EntryType.NOTE -> { /* solo nombre + notas */ }
+                EntryType.PASSKEY -> { /* la clave la gestiona el sistema; solo nombre, etiquetas y notas */ }
                 else -> {
                     OutlinedTextField(
                         value = username, onValueChange = { username = it },
@@ -613,11 +720,41 @@ fun EntryEditScreen(
                 }
             }
             OutlinedTextField(
+                value = tagsText, onValueChange = { tagsText = it },
+                label = { Text(stringResource(R.string.tags_label)) }, singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            OutlinedTextField(
                 value = notes, onValueChange = { notes = it },
                 label = { Text(stringResource(R.string.field_notes)) },
                 minLines = if (type == EntryType.NOTE) 8 else 3,
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            attachments.forEach { att ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.AttachFile, null, Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(att.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
+                    IconButton(onClick = { attachments = attachments - att }) {
+                        Icon(Icons.Filled.Close, stringResource(R.string.delete))
+                    }
+                }
+            }
+            TextButton(onClick = {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+                attachLauncher.launch(intent)
+            }) {
+                Icon(Icons.Filled.AttachFile, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(stringResource(R.string.add_attachment))
+            }
             Spacer(Modifier.height(4.dp))
             Button(
                 onClick = {
@@ -639,19 +776,24 @@ fun EntryEditScreen(
                             "phone" to idPhone.trim(),
                             "address" to idAddress.trim(),
                         ).filterValues { it.isNotBlank() }
+                        // Las passkeys conservan sus extras: ahí vive la clave privada
+                        EntryType.PASSKEY -> entry?.extras ?: emptyMap()
                         else -> emptyMap()
                     }
+                    val keepsLoginFields = type == EntryType.LOGIN || type == EntryType.PASSKEY
                     val saved = (entry ?: VaultEntry(type = type)).let { base ->
                         base.copy(
                             type = type,
                             title = title.trim(),
-                            username = if (type == EntryType.LOGIN) username.trim() else "",
-                            password = if (type == EntryType.LOGIN) password else "",
-                            url = if (type == EntryType.LOGIN) url.trim() else "",
+                            username = if (keepsLoginFields) username.trim() else "",
+                            password = if (type == EntryType.LOGIN) password else base.password,
+                            url = if (keepsLoginFields) url.trim() else "",
                             notes = notes,
                             category = category,
                             totpSecret = if (type == EntryType.LOGIN) totpSecret.trim() else "",
                             extras = extras,
+                            tags = tagsText.split(',').map { it.trim() }.filter { it.isNotBlank() },
+                            attachments = attachments,
                             updatedAt = now,
                             passwordChangedAt = if (base.password != password) now else base.passwordChangedAt,
                         )
